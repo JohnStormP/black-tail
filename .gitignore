@@ -25,3 +25,8 @@ Thumbs.db
 /node_modules
 /public/build
 /public/hot
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
