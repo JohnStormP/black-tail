@@ -57,5 +57,19 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    ports:
+      - "8124:8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1" ]
+    environment:
+      CLICKHOUSE_DB: blacktail
+      CLICKHOUSE_USER: blacktail
+      CLICKHOUSE_PASSWORD: blacktail
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
 volumes:
   postgres_data:
+  clickhouse_data:
