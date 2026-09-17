@@ -11,7 +11,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
+      redis:
+        condition: service_healthy
   nginx:
     image: nginx:alpine
     ports:
@@ -37,6 +38,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: redis-cli ping
+    ports:
+      - "6379:6379"
 volumes:
   postgres_data:
