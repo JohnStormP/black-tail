@@ -6,13 +6,16 @@ RUN apt-get update \
         unzip \
         libpq-dev \
         libicu-dev \
+        librabbitmq-dev \
     && docker-php-ext-install -j$(nproc) \
         pdo_pgsql \
         intl \
         opcache \
     && rm -rf /var/lib/apt/lists/* \
     && pecl install redis \
-    && docker-php-ext-enable redis
+    && docker-php-ext-enable redis \
+    && pecl install amqp \
+    && docker-php-ext-enable amqp
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
