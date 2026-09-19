@@ -20,6 +20,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Tenant/Domain/Entity'
                 prefix: 'App\Tenant\Domain\Entity'
                 alias: Tenant
+            Player:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Player/Domain/Entity'
+                prefix: 'App\Player\Domain\Entity'
+                alias: Player
 
 when@test:
     doctrine:
