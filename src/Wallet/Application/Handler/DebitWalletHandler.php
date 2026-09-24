@@ -5,6 +5,7 @@ namespace App\Wallet\Application\Handler;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Application\Command\DebitWalletCommand;
 use App\Wallet\Domain\Entity\LedgerEntry;
+use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
 use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
@@ -28,6 +29,18 @@ final class DebitWalletHandler
             $ledgerEntryId = LedgerEntryId::fromString($command->entryId);
             $wallet = $this->wallets->getByIdForUpdate($walletId);
             $money = Money::of($command->amount, $wallet->currency());
+            $existing = $this->ledger->findById($ledgerEntryId);
+            if (null !== $existing) {
+                if (
+                    $existing->walletId()->equals($walletId)
+                    && LedgerEntryType::Debit === $existing->type()
+                    && $existing->amount()->equals($money)
+                ) {
+                    return;
+                }
+                throw LedgerIdempotencyConflictException::forEntry($ledgerEntryId);
+            }
+
             $wallet->debit($money);
             $this->wallets->save($wallet);
             $entry = LedgerEntry::record(

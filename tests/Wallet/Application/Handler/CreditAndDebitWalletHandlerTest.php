@@ -12,6 +12,7 @@ use App\Wallet\Application\Handler\OpenWalletHandler;
 use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Entity\Wallet;
 use App\Wallet\Domain\Exception\InsufficientFundsException;
+use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
 use App\Wallet\Domain\Exception\WalletNotActiveException;
 use App\Wallet\Domain\Exception\WalletNotFoundException;
 use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
@@ -125,5 +126,40 @@ final class CreditAndDebitWalletHandlerTest extends KernelTestCase
             self::CREDIT_ENTRY_ID_2,
             100,
         ));
+    }
+
+    public function testCreditIsIdempotentForSameEntryId(): void
+    {
+        ($this->open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 1000));
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 1000));
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(1000, $wallet->availableBalance()->amount());
+        $this->assertCount(1, $this->ledger->findByWalletId(WalletId::fromString(self::WALLET_ID)));
+    }
+
+    public function testDebitIsIdempotentForSameEntryId(): void
+    {
+        ($this->open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 1000));
+
+        ($this->debit)(new DebitWalletCommand(self::WALLET_ID, self::DEBIT_ENTRY_ID, 400));
+        ($this->debit)(new DebitWalletCommand(self::WALLET_ID, self::DEBIT_ENTRY_ID, 400));
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(600, $wallet->availableBalance()->amount());
+        $this->assertCount(2, $this->ledger->findByWalletId(WalletId::fromString(self::WALLET_ID)));
+    }
+
+    public function testCreditSameEntryIdWithDifferentAmountConflicts(): void
+    {
+        ($this->open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 1000));
+
+        $this->expectException(LedgerIdempotencyConflictException::class);
+
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 500));
     }
 }
