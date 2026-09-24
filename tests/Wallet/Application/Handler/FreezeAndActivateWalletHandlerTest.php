@@ -10,9 +10,11 @@ use App\Wallet\Application\Handler\ActivateWalletHandler;
 use App\Wallet\Application\Handler\CreditWalletHandler;
 use App\Wallet\Application\Handler\FreezeWalletHandler;
 use App\Wallet\Application\Handler\OpenWalletHandler;
+use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Entity\Wallet;
 use App\Wallet\Domain\Exception\WalletNotActiveException;
 use App\Wallet\Domain\Exception\WalletNotFoundException;
+use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\WalletId;
 use App\Wallet\Domain\ValueObject\WalletStatus;
@@ -23,6 +25,7 @@ final class FreezeAndActivateWalletHandlerTest extends KernelTestCase
 {
     private const string WALLET_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
     private const string PLAYER_ID = '01BX5ZZKBKACTAV9WEVGEMMVRY';
+    private const string CREDIT_ENTRY_ID = '01ARZ3NDEKTSV4RRFFQ69G5F01';
 
     private OpenWalletHandler $open;
     private FreezeWalletHandler $freeze;
@@ -38,14 +41,18 @@ final class FreezeAndActivateWalletHandlerTest extends KernelTestCase
         self::assertInstanceOf(WalletRepositoryInterface::class, $wallets);
         $this->wallets = $wallets;
 
+        $ledger = self::getContainer()->get(LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(LedgerEntryRepositoryInterface::class, $ledger);
+
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $entityManager->createQuery('DELETE FROM '.LedgerEntry::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Wallet::class)->execute();
 
         $this->open = new OpenWalletHandler($this->wallets);
         $this->freeze = new FreezeWalletHandler($this->wallets);
         $this->activate = new ActivateWalletHandler($this->wallets);
-        $this->credit = new CreditWalletHandler($this->wallets);
+        $this->credit = new CreditWalletHandler($this->wallets, $ledger);
     }
 
     public function testFreezeThenActivate(): void
@@ -69,13 +76,13 @@ final class FreezeAndActivateWalletHandlerTest extends KernelTestCase
         ($this->freeze)(new FreezeWalletCommand(self::WALLET_ID));
 
         try {
-            ($this->credit)(new CreditWalletCommand(self::WALLET_ID, 100));
+            ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 100));
             $this->fail('Expected WalletNotActiveException while frozen');
         } catch (WalletNotActiveException) {
         }
 
         ($this->activate)(new ActivateWalletCommand(self::WALLET_ID));
-        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, 100));
+        ($this->credit)(new CreditWalletCommand(self::WALLET_ID, self::CREDIT_ENTRY_ID, 100));
 
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
         $this->assertSame(100, $wallet->availableBalance()->amount());

@@ -6,6 +6,7 @@ final readonly class DebitWalletCommand
 {
     public function __construct(
         public string $walletId,
+        public string $entryId,
         public int $amount,
     ) {
     }
