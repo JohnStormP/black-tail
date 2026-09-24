@@ -9,6 +9,27 @@ jobs:
   checks:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: blacktail
+          POSTGRES_USER: blacktail
+          POSTGRES_PASSWORD: blacktail
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blacktail -d blacktail"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Job runs on the VM, not in a compose network — host is localhost, not "postgres".
+      DATABASE_URL: postgresql://blacktail:blacktail@127.0.0.1:5432/blacktail?serverVersion=16&charset=utf8
+      REDIS_URL: redis://127.0.0.1:6379
+      MESSENGER_TRANSPORT_DSN: in-memory://
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +50,11 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Create test database and migrate
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php bin/console doctrine:migrations:migrate --env=test --no-interaction
 
       - run: vendor/bin/phpunit
 
