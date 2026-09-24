@@ -2,6 +2,7 @@
 
 namespace App\Tests\Wallet\Application\Handler;
 
+use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Application\Command\CreditWalletCommand;
 use App\Wallet\Application\Command\DebitWalletCommand;
 use App\Wallet\Application\Command\OpenWalletCommand;
@@ -47,14 +48,17 @@ final class CreditAndDebitWalletHandlerTest extends KernelTestCase
         self::assertInstanceOf(LedgerEntryRepositoryInterface::class, $ledger);
         $this->ledger = $ledger;
 
+        $transactions = self::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $entityManager->createQuery('DELETE FROM '.LedgerEntry::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Wallet::class)->execute();
 
         $this->open = new OpenWalletHandler($this->wallets);
-        $this->credit = new CreditWalletHandler($this->wallets, $this->ledger);
-        $this->debit = new DebitWalletHandler($this->wallets, $this->ledger);
+        $this->credit = new CreditWalletHandler($this->wallets, $this->ledger, $transactions);
+        $this->debit = new DebitWalletHandler($this->wallets, $this->ledger, $transactions);
     }
 
     public function testCreditThenDebitWritesLedger(): void

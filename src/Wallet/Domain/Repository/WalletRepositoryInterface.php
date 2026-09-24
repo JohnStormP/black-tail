@@ -16,4 +16,9 @@ interface WalletRepositoryInterface
      * @throws WalletNotFoundException
      */
     public function getById(WalletId $id): Wallet;
+
+    /**
+     * @throws WalletNotFoundException
+     */
+    public function getByIdForUpdate(WalletId $id): Wallet;
 }

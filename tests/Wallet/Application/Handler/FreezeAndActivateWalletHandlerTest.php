@@ -2,6 +2,7 @@
 
 namespace App\Tests\Wallet\Application\Handler;
 
+use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Application\Command\ActivateWalletCommand;
 use App\Wallet\Application\Command\CreditWalletCommand;
 use App\Wallet\Application\Command\FreezeWalletCommand;
@@ -44,6 +45,9 @@ final class FreezeAndActivateWalletHandlerTest extends KernelTestCase
         $ledger = self::getContainer()->get(LedgerEntryRepositoryInterface::class);
         self::assertInstanceOf(LedgerEntryRepositoryInterface::class, $ledger);
 
+        $transactions = self::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
         $entityManager->createQuery('DELETE FROM '.LedgerEntry::class)->execute();
@@ -52,7 +56,7 @@ final class FreezeAndActivateWalletHandlerTest extends KernelTestCase
         $this->open = new OpenWalletHandler($this->wallets);
         $this->freeze = new FreezeWalletHandler($this->wallets);
         $this->activate = new ActivateWalletHandler($this->wallets);
-        $this->credit = new CreditWalletHandler($this->wallets, $ledger);
+        $this->credit = new CreditWalletHandler($this->wallets, $ledger, $transactions);
     }
 
     public function testFreezeThenActivate(): void
