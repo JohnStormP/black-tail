@@ -11,7 +11,7 @@ final class Version20260923132853 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Create wallets table';
     }
 
     public function up(Schema $schema): void

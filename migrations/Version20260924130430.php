@@ -11,7 +11,7 @@ final class Version20260924130430 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Create ledger_entries table';
     }
 
     public function up(Schema $schema): void
