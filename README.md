@@ -22,3 +22,17 @@ analytics, real-time events, and an AI analytics assistant — without real mone
 - PHP CS Fixer
 - GitHub Actions (CI)
 - LLM integration (AI Analyst)
+
+## Development
+
+Docker stack must be running (`docker compose up -d`). Quality commands go through the `php` service:
+
+```bash
+make help              # list targets
+make test              # PHPUnit
+make phpstan
+make cs                # PHP CS Fixer dry-run
+make cs-fix            # apply CS fixes
+make check             # test + phpstan + cs + lint:container
+make schema-validate   # Doctrine schema (test env)
+```
