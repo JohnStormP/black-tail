@@ -27,6 +27,7 @@ final class WalletTest extends TestCase
         $this->assertTrue($wallet->playerId()->equals($playerId));
         $this->assertSame(Currency::Usd, $wallet->currency());
         $this->assertTrue($wallet->availableBalance()->isZero());
+        $this->assertTrue($wallet->reservedBalance()->isZero());
         $this->assertSame(WalletStatus::Active, $wallet->status());
         $this->assertTrue($wallet->isActive());
         $this->assertEquals($createdAt, $wallet->createdAt());
@@ -87,6 +88,67 @@ final class WalletTest extends TestCase
         $wallet->credit(Money::of(100, Currency::Usd));
 
         $this->assertTrue($wallet->availableBalance()->equals(Money::of(100, Currency::Usd)));
+    }
+
+    public function testReserveReleaseAndSettle(): void
+    {
+        $wallet = $this->openWallet();
+        $wallet->credit(Money::of(1000, Currency::Usd));
+
+        $wallet->reserve(Money::of(400, Currency::Usd));
+        $this->assertSame(600, $wallet->availableBalance()->amount());
+        $this->assertSame(400, $wallet->reservedBalance()->amount());
+
+        $wallet->release(Money::of(100, Currency::Usd));
+        $this->assertSame(700, $wallet->availableBalance()->amount());
+        $this->assertSame(300, $wallet->reservedBalance()->amount());
+
+        $wallet->settle(Money::of(200, Currency::Usd));
+        $this->assertSame(700, $wallet->availableBalance()->amount());
+        $this->assertSame(100, $wallet->reservedBalance()->amount());
+    }
+
+    public function testReserveRejectsInsufficientAvailable(): void
+    {
+        $wallet = $this->openWallet();
+        $wallet->credit(Money::of(100, Currency::Usd));
+
+        $this->expectException(InsufficientFundsException::class);
+
+        $wallet->reserve(Money::of(200, Currency::Usd));
+    }
+
+    public function testReleaseRejectsInsufficientReserved(): void
+    {
+        $wallet = $this->openWallet();
+        $wallet->credit(Money::of(100, Currency::Usd));
+        $wallet->reserve(Money::of(50, Currency::Usd));
+
+        $this->expectException(InsufficientFundsException::class);
+
+        $wallet->release(Money::of(80, Currency::Usd));
+    }
+
+    public function testSettleRejectsInsufficientReserved(): void
+    {
+        $wallet = $this->openWallet();
+        $wallet->credit(Money::of(100, Currency::Usd));
+        $wallet->reserve(Money::of(50, Currency::Usd));
+
+        $this->expectException(InsufficientFundsException::class);
+
+        $wallet->settle(Money::of(80, Currency::Usd));
+    }
+
+    public function testFrozenWalletRejectsReserve(): void
+    {
+        $wallet = $this->openWallet();
+        $wallet->credit(Money::of(100, Currency::Usd));
+        $wallet->freeze();
+
+        $this->expectException(WalletNotActiveException::class);
+
+        $wallet->reserve(Money::of(50, Currency::Usd));
     }
 
     private function openWallet(): Wallet

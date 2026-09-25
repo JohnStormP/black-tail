@@ -8,4 +8,7 @@ enum LedgerEntryType: string
     case Debit = 'debit';
     case Deposit = 'deposit';
     case Withdrawal = 'withdrawal';
+    case Reserve = 'reserve';
+    case Release = 'release';
+    case Settle = 'settle';
 }

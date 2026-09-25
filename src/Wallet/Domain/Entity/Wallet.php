@@ -29,6 +29,9 @@ class Wallet
     #[ORM\Column(name: 'available_amount', type: 'bigint')]
     private int $availableAmount;
 
+    #[ORM\Column(name: 'reserved_amount', type: 'bigint')]
+    private int $reservedAmount;
+
     #[ORM\Column(name: 'status', type: 'string', length: 32, enumType: WalletStatus::class)]
     private WalletStatus $status;
 
@@ -50,6 +53,7 @@ class Wallet
         $wallet->playerId = $playerId->toString();
         $wallet->currency = $currency;
         $wallet->availableAmount = 0;
+        $wallet->reservedAmount = 0;
         $wallet->status = WalletStatus::Active;
         $wallet->createdAt = $createdAt;
 
@@ -74,6 +78,11 @@ class Wallet
     public function availableBalance(): Money
     {
         return Money::of($this->availableAmount, $this->currency);
+    }
+
+    public function reservedBalance(): Money
+    {
+        return Money::of($this->reservedAmount, $this->currency);
     }
 
     public function status(): WalletStatus
@@ -123,6 +132,78 @@ class Wallet
         }
 
         $this->availableAmount = $current
+            ->subtract($amount)
+            ->amount();
+    }
+
+    public function reserve(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotReserve();
+        }
+        $current = Money::of(
+            $this->availableAmount,
+            $this->currency,
+        );
+
+        $reserved = Money::of(
+            $this->reservedAmount,
+            $this->currency,
+        );
+
+        if ($current->lessThan($amount)) {
+            throw InsufficientFundsException::forReserve();
+        }
+
+        $this->availableAmount = $current
+            ->subtract($amount)
+            ->amount();
+
+        $this->reservedAmount = $reserved
+            ->add($amount)
+            ->amount();
+    }
+
+    public function release(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotRelease();
+        }
+        $reserved = Money::of(
+            $this->reservedAmount,
+            $this->currency,
+        );
+        $availableAmount = Money::of(
+            $this->availableAmount,
+            $this->currency,
+        );
+
+        if ($reserved->lessThan($amount)) {
+            throw InsufficientFundsException::forRelease();
+        }
+        $this->reservedAmount = $reserved
+            ->subtract($amount)
+            ->amount();
+
+        $this->availableAmount = $availableAmount
+            ->add($amount)
+            ->amount();
+    }
+
+    public function settle(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotSettle();
+        }
+        $reserved = Money::of(
+            $this->reservedAmount,
+            $this->currency,
+        );
+
+        if ($reserved->lessThan($amount)) {
+            throw InsufficientFundsException::forSettle();
+        }
+        $this->reservedAmount = $reserved
             ->subtract($amount)
             ->amount();
     }
