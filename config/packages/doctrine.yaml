@@ -38,6 +38,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Identity/Domain/Entity'
                 prefix: 'App\Identity\Domain\Entity'
                 alias: Identity
+            Game:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Game/Domain/Entity'
+                prefix: 'App\Game\Domain\Entity'
+                alias: Game
 
 when@test:
     doctrine:
