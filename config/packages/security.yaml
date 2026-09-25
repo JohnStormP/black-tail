@@ -1,9 +1,11 @@
 security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+        App\Identity\Infrastructure\Security\SecurityUser: 'auto'
 
     providers:
-        users_in_memory: { memory: null }
+        identity_user_provider:
+            id: App\Identity\Infrastructure\Security\SecurityUserProvider
 
     firewalls:
         dev:
@@ -11,7 +13,8 @@ security:
             security: false
         main:
             lazy: true
-            provider: users_in_memory
+            provider: identity_user_provider
+            user_checker: App\Identity\Infrastructure\Security\SecurityUserChecker
 
     access_control: []
 
@@ -19,6 +22,11 @@ when@test:
     security:
         password_hashers:
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10
+            App\Identity\Infrastructure\Security\SecurityUser:
                 algorithm: auto
                 cost: 4
                 time_cost: 3
