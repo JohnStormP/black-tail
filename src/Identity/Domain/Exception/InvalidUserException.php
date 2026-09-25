@@ -6,6 +6,11 @@ use App\Shared\Domain\Exception\DomainException;
 
 final class InvalidUserException extends DomainException
 {
+    public static function emptyPassword(): self
+    {
+        return new self('User password cannot be empty');
+    }
+
     public static function emptyPasswordHash(): self
     {
         return new self('User password hash cannot be empty');
