@@ -6,4 +6,6 @@ enum LedgerEntryType: string
 {
     case Credit = 'credit';
     case Debit = 'debit';
+    case Deposit = 'deposit';
+    case Withdrawal = 'withdrawal';
 }
