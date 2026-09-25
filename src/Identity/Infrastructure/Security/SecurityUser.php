@@ -4,9 +4,11 @@ namespace App\Identity\Infrastructure\Security;
 
 use App\Identity\Domain\Entity\User;
 use App\Identity\Domain\ValueObject\UserRole;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
+#[Exclude]
 final class SecurityUser implements UserInterface, PasswordAuthenticatedUserInterface
 {
     /**

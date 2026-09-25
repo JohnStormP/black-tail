@@ -15,8 +15,16 @@ security:
             lazy: true
             provider: identity_user_provider
             user_checker: App\Identity\Infrastructure\Security\SecurityUserChecker
+            json_login:
+                check_path: api_login
+                username_path: email
+                password_path: password
+                success_handler: App\Identity\Infrastructure\Security\JsonLoginSuccessHandler
+                failure_handler: App\Identity\Infrastructure\Security\JsonLoginFailureHandler
 
-    access_control: []
+    access_control:
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:
