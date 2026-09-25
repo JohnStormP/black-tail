@@ -23,7 +23,7 @@ final readonly class GameId
             throw InvalidGameIdException::invalidFormat($value);
         }
 
-        return new self($value);
+        return new self(strtoupper($value));
     }
 
     public function toString(): string
