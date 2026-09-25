@@ -26,6 +26,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/tenants, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/wallets, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:
