@@ -5,10 +5,9 @@ namespace App\Game\Application\Handler;
 use App\Game\Application\Command\SpinLuckyReelsCommand;
 use App\Game\Domain\Entity\GameRound;
 use App\Game\Domain\Exception\GameNotPlayableException;
+use App\Game\Domain\Provider\GameProviderResolver;
 use App\Game\Domain\Repository\GameRepositoryInterface;
 use App\Game\Domain\Repository\GameRoundRepositoryInterface;
-use App\Game\Domain\Service\LuckyReelsEngine;
-use App\Game\Domain\ValueObject\GameCode;
 use App\Game\Domain\ValueObject\GameId;
 use App\Game\Domain\ValueObject\GameRoundId;
 use App\Game\Domain\ValueObject\LuckyReelsConfig;
@@ -20,7 +19,7 @@ final class SpinLuckyReelsHandler
     public function __construct(
         private readonly GameRepositoryInterface $games,
         private readonly GameRoundRepositoryInterface $rounds,
-        private readonly LuckyReelsEngine $engine,
+        private readonly GameProviderResolver $resolver,
         private readonly RandomIntGeneratorInterface $rng,
     ) {
     }
@@ -37,12 +36,9 @@ final class SpinLuckyReelsHandler
             throw GameNotPlayableException::disabled($gameId);
         }
 
-        if (!GameCode::fromString('lucky_reels')->equals($game->code())) {
-            throw GameNotPlayableException::unsupportedForLuckyReels($game->code());
-        }
-
+        $provider = $this->resolver->resolve($game->code());
         $config = LuckyReelsConfig::default();
-        $result = $this->engine->spin($config, $this->rng);
+        $result = $provider->spin($this->rng);
         $round = GameRound::record(
             $gameRoundId,
             $gameId,

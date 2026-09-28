@@ -7,12 +7,15 @@ use App\Game\Application\Handler\SpinLuckyReelsHandler;
 use App\Game\Domain\Entity\Game;
 use App\Game\Domain\Entity\GameRound;
 use App\Game\Domain\Exception\GameNotPlayableException;
+use App\Game\Domain\Exception\GameProviderNotFoundException;
+use App\Game\Domain\Provider\GameProviderResolver;
 use App\Game\Domain\Repository\GameRepositoryInterface;
 use App\Game\Domain\Repository\GameRoundRepositoryInterface;
 use App\Game\Domain\Service\LuckyReelsEngine;
 use App\Game\Domain\ValueObject\GameCode;
 use App\Game\Domain\ValueObject\GameId;
 use App\Game\Domain\ValueObject\GameRoundId;
+use App\Game\Infrastructure\Provider\LuckyReelsGameProvider;
 use App\Shared\Infrastructure\Random\SeededRandomIntGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -44,11 +47,16 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
         $entityManager->createQuery('DELETE FROM '.GameRound::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Game::class)->execute();
 
-        $engine = new LuckyReelsEngine();
+        $resolver = new GameProviderResolver([
+            new LuckyReelsGameProvider(new LuckyReelsEngine()),
+        ]);
 
-        $rng = new SeededRandomIntGenerator(42);
-
-        $this->handler = new SpinLuckyReelsHandler($this->games, $this->rounds, $engine, $rng);
+        $this->handler = new SpinLuckyReelsHandler(
+            $this->games,
+            $this->rounds,
+            $resolver,
+            new SeededRandomIntGenerator(42),
+        );
     }
 
     public function testSpinPersistsRound(): void
@@ -102,7 +110,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
         $handler = new SpinLuckyReelsHandler(
             $this->games,
             $this->rounds,
-            new LuckyReelsEngine(),
+            new GameProviderResolver([new LuckyReelsGameProvider(new LuckyReelsEngine())]),
             new SeededRandomIntGenerator(42),
         );
 
@@ -139,7 +147,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
         ));
     }
 
-    public function testRejectsNonLuckyReelsGame(): void
+    public function testRejectsUnsupportedGameCode(): void
     {
         $this->games->save(Game::register(
             GameId::fromString(self::GAME_ID),
@@ -147,7 +155,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             'Crash',
         ));
 
-        $this->expectException(GameNotPlayableException::class);
+        $this->expectException(GameProviderNotFoundException::class);
 
         ($this->handler)(new SpinLuckyReelsCommand(
             self::ROUND_ID,
