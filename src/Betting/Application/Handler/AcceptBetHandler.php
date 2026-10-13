@@ -3,6 +3,7 @@
 namespace App\Betting\Application\Handler;
 
 use App\Betting\Application\Command\AcceptBetCommand;
+use App\Betting\Domain\Event\BetAccepted;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
@@ -16,6 +17,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\WalletId;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class AcceptBetHandler
 {
@@ -24,12 +26,15 @@ final class AcceptBetHandler
         private readonly WalletRepositoryInterface $wallets,
         private readonly LedgerEntryRepositoryInterface $ledger,
         private readonly TransactionManagerInterface $transactions,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
     public function __invoke(AcceptBetCommand $command): void
     {
-        $this->transactions->transactional(function () use ($command): void {
+        $event = null;
+
+        $this->transactions->transactional(function () use ($command, &$event): void {
             $betId = BetId::fromString($command->betId);
             $walletId = WalletId::fromString($command->walletId);
             $entryId = LedgerEntryId::fromString($command->reserveEntryId);
@@ -77,6 +82,12 @@ final class AcceptBetHandler
 
             $bet->accept();
             $this->bets->save($bet);
+
+            $event = new BetAccepted($betId, $bet->playerId(), $walletId, $money);
         });
+
+        if (null !== $event) {
+            $this->eventDispatcher->dispatch($event);
+        }
     }
 }

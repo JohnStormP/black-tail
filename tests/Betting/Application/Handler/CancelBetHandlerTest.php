@@ -110,7 +110,7 @@ final class CancelBetHandlerTest extends KernelTestCase
         ));
 
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
-        $this->accept = new AcceptBetHandler($this->bets, $wallets, $ledger, $transactions);
+        $this->accept = new AcceptBetHandler($this->bets, $wallets, $ledger, $transactions, new EventDispatcher());
         $this->cancel = new CancelBetHandler($this->bets);
         $this->open = new OpenWalletHandler($wallets);
         $this->deposit = new DepositWalletHandler($wallets, $ledger, $transactions);

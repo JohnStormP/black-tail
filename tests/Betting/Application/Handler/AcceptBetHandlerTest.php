@@ -7,6 +7,7 @@ use App\Betting\Application\Command\PlaceBetCommand;
 use App\Betting\Application\Handler\AcceptBetHandler;
 use App\Betting\Application\Handler\PlaceBetHandler;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetAccepted;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
@@ -65,6 +66,9 @@ final class AcceptBetHandlerTest extends KernelTestCase
     private WalletRepositoryInterface $wallets;
     private LedgerEntryRepositoryInterface $ledger;
 
+    /** @var list<BetAccepted> */
+    private array $recordedEvents = [];
+
     protected function setUp(): void
     {
         self::bootKernel();
@@ -118,8 +122,15 @@ final class AcceptBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
+        $this->recordedEvents = [];
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(BetAccepted::class, function (BetAccepted $event): void {
+            $this->recordedEvents[] = $event;
+        });
+
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
-        $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions);
+        $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, $dispatcher);
         $this->open = new OpenWalletHandler($this->wallets);
         $this->deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
     }
@@ -141,6 +152,9 @@ final class AcceptBetHandlerTest extends KernelTestCase
         $entry = $this->ledger->getById(LedgerEntryId::fromString(self::RESERVE_ENTRY_ID));
         $this->assertSame(LedgerEntryType::Reserve, $entry->type());
         $this->assertSame(100, $entry->amount()->amount());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->betId()->equals(BetId::fromString(self::BET_ID)));
+        $this->assertTrue($this->recordedEvents[0]->walletId()->equals(WalletId::fromString(self::WALLET_ID)));
     }
 
     public function testAcceptIsIdempotentWhenAlreadyAccepted(): void
@@ -155,6 +169,7 @@ final class AcceptBetHandlerTest extends KernelTestCase
         $this->assertSame(900, $wallet->availableBalance()->amount());
         $this->assertSame(100, $wallet->reservedBalance()->amount());
         $this->assertSame(BetStatus::Accepted, $this->bets->getById(BetId::fromString(self::BET_ID))->status());
+        $this->assertCount(1, $this->recordedEvents);
     }
 
     public function testRejectsInsufficientFunds(): void
