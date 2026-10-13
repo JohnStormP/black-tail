@@ -9,10 +9,12 @@ use App\Betting\Application\Handler\AcceptBetHandler;
 use App\Betting\Application\Handler\PlaceBetHandler;
 use App\Betting\Application\Handler\SettleBetHandler;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetSettled;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
+use App\Betting\Domain\ValueObject\BetSettlementOutcome;
 use App\Betting\Domain\ValueObject\BetStatus;
 use App\Game\Domain\Entity\Game;
 use App\Game\Domain\Entity\TenantGame;
@@ -65,6 +67,9 @@ final class SettleBetHandlerTest extends KernelTestCase
     private BetRepositoryInterface $bets;
     private WalletRepositoryInterface $wallets;
     private LedgerEntryRepositoryInterface $ledger;
+
+    /** @var list<BetSettled> */
+    private array $recordedEvents = [];
 
     protected function setUp(): void
     {
@@ -119,9 +124,16 @@ final class SettleBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
+        $this->recordedEvents = [];
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(BetSettled::class, function (BetSettled $event): void {
+            $this->recordedEvents[] = $event;
+        });
+
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
         $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, new EventDispatcher());
-        $this->settle = new SettleBetHandler($this->bets, $this->wallets, $this->ledger, $transactions);
+        $this->settle = new SettleBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, $dispatcher);
         $this->open = new OpenWalletHandler($this->wallets);
         $this->deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
     }
@@ -147,6 +159,9 @@ final class SettleBetHandlerTest extends KernelTestCase
         $entry = $this->ledger->getById(LedgerEntryId::fromString(self::SETTLE_ENTRY_ID));
         $this->assertSame(LedgerEntryType::Settle, $entry->type());
         $this->assertSame(100, $entry->amount()->amount());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertSame(BetSettlementOutcome::Lost, $this->recordedEvents[0]->outcome());
+        $this->assertSame(0, $this->recordedEvents[0]->payoutMinor());
     }
 
     public function testSettleWonPaysPayout(): void
@@ -173,6 +188,9 @@ final class SettleBetHandlerTest extends KernelTestCase
         $payout = $this->ledger->getById(LedgerEntryId::fromString(self::PAYOUT_ENTRY_ID));
         $this->assertSame(LedgerEntryType::Credit, $payout->type());
         $this->assertSame(250, $payout->amount()->amount());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertSame(BetSettlementOutcome::Won, $this->recordedEvents[0]->outcome());
+        $this->assertSame(250, $this->recordedEvents[0]->payoutMinor());
     }
 
     public function testSettleWonIsIdempotent(): void
@@ -193,6 +211,7 @@ final class SettleBetHandlerTest extends KernelTestCase
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
         $this->assertSame(1150, $wallet->availableBalance()->amount());
         $this->assertSame(BetStatus::Won, $this->bets->getById(BetId::fromString(self::BET_ID))->status());
+        $this->assertCount(1, $this->recordedEvents);
     }
 
     public function testRejectsPayoutWithoutEntryId(): void
