@@ -4,6 +4,7 @@ namespace App\Betting\Application\Handler;
 
 use App\Betting\Application\Command\PlaceBetCommand;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetPlaced;
 use App\Betting\Domain\Exception\BetIdempotencyConflictException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
@@ -18,6 +19,7 @@ use App\Player\Domain\ValueObject\PlayerId;
 use App\Wallet\Domain\ValueObject\Currency;
 use App\Wallet\Domain\ValueObject\Money;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class PlaceBetHandler
 {
@@ -26,6 +28,7 @@ final class PlaceBetHandler
         private readonly PlayerRepositoryInterface $players,
         private readonly GameRepositoryInterface $games,
         private readonly TenantGameRepositoryInterface $tenantGames,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -80,6 +83,7 @@ final class PlaceBetHandler
         } catch (UniqueConstraintViolationException) {
             return;
         }
+        $this->eventDispatcher->dispatch(new BetPlaced($betId, $playerId, $gameId, $roundId, $amount));
     }
 
     private function matchesRequest(

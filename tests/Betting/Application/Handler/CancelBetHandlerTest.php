@@ -36,6 +36,7 @@ use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class CancelBetHandlerTest extends KernelTestCase
 {
@@ -108,7 +109,7 @@ final class CancelBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
-        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames);
+        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
         $this->accept = new AcceptBetHandler($this->bets, $wallets, $ledger, $transactions);
         $this->cancel = new CancelBetHandler($this->bets);
         $this->open = new OpenWalletHandler($wallets);

@@ -5,6 +5,7 @@ namespace App\Tests\Betting\Application\Handler;
 use App\Betting\Application\Command\PlaceBetCommand;
 use App\Betting\Application\Handler\PlaceBetHandler;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetPlaced;
 use App\Betting\Domain\Exception\BetIdempotencyConflictException;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
@@ -26,6 +27,7 @@ use App\Player\Domain\ValueObject\PlayerId;
 use App\Tenant\Domain\ValueObject\TenantId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PlaceBetHandlerTest extends KernelTestCase
 {
@@ -40,6 +42,9 @@ final class PlaceBetHandlerTest extends KernelTestCase
     private PlaceBetHandler $handler;
     private BetRepositoryInterface $bets;
     private EntityManagerInterface $entityManager;
+
+    /** @var list<BetPlaced> */
+    private array $recordedEvents = [];
 
     protected function setUp(): void
     {
@@ -83,7 +88,14 @@ final class PlaceBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
-        $this->handler = new PlaceBetHandler($this->bets, $players, $games, $tenantGames);
+        $this->recordedEvents = [];
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(BetPlaced::class, function (BetPlaced $event): void {
+            $this->recordedEvents[] = $event;
+        });
+
+        $this->handler = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, $dispatcher);
     }
 
     public function testPlacesPendingBet(): void
@@ -94,6 +106,8 @@ final class PlaceBetHandlerTest extends KernelTestCase
         $this->assertSame(BetStatus::Pending, $bet->status());
         $this->assertSame(100, $bet->amount()->amount());
         $this->assertSame(self::IDEMPOTENCY_KEY, $bet->idempotencyKey()->toString());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->betId()->equals(BetId::fromString(self::BET_ID)));
     }
 
     public function testPlaceIsIdempotentForSamePayload(): void
@@ -105,6 +119,7 @@ final class PlaceBetHandlerTest extends KernelTestCase
             'SELECT COUNT(b.id) FROM '.Bet::class.' b'
         )->getSingleScalarResult();
         $this->assertSame(1, $count);
+        $this->assertCount(1, $this->recordedEvents);
     }
 
     public function testPlaceConflictsOnSameKeyDifferentPayload(): void

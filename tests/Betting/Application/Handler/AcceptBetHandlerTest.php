@@ -40,6 +40,7 @@ use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class AcceptBetHandlerTest extends KernelTestCase
 {
@@ -117,7 +118,7 @@ final class AcceptBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
-        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames);
+        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
         $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions);
         $this->open = new OpenWalletHandler($this->wallets);
         $this->deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
