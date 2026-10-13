@@ -3,14 +3,17 @@
 namespace App\Betting\Application\Handler;
 
 use App\Betting\Application\Command\CancelBetCommand;
+use App\Betting\Domain\Event\BetCancelled;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
 use App\Betting\Domain\ValueObject\BetStatus;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class CancelBetHandler
 {
     public function __construct(
         private readonly BetRepositoryInterface $bets,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -18,10 +21,14 @@ final class CancelBetHandler
     {
         $betId = BetId::fromString($command->betId);
         $bet = $this->bets->getById($betId);
+
         if (BetStatus::Cancelled === $bet->status()) {
             return;
         }
+
         $bet->cancel();
         $this->bets->save($bet);
+
+        $this->eventDispatcher->dispatch(new BetCancelled($betId, $bet->playerId(), $bet->amount()));
     }
 }

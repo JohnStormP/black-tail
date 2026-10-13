@@ -9,6 +9,7 @@ use App\Betting\Application\Handler\AcceptBetHandler;
 use App\Betting\Application\Handler\CancelBetHandler;
 use App\Betting\Application\Handler\PlaceBetHandler;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetCancelled;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
@@ -57,6 +58,9 @@ final class CancelBetHandlerTest extends KernelTestCase
     private OpenWalletHandler $open;
     private DepositWalletHandler $deposit;
     private BetRepositoryInterface $bets;
+
+    /** @var list<BetCancelled> */
+    private array $recordedEvents = [];
 
     protected function setUp(): void
     {
@@ -109,9 +113,16 @@ final class CancelBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
+        $this->recordedEvents = [];
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(BetCancelled::class, function (BetCancelled $event): void {
+            $this->recordedEvents[] = $event;
+        });
+
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
         $this->accept = new AcceptBetHandler($this->bets, $wallets, $ledger, $transactions, new EventDispatcher());
-        $this->cancel = new CancelBetHandler($this->bets);
+        $this->cancel = new CancelBetHandler($this->bets, $dispatcher);
         $this->open = new OpenWalletHandler($wallets);
         $this->deposit = new DepositWalletHandler($wallets, $ledger, $transactions);
     }
@@ -132,6 +143,8 @@ final class CancelBetHandlerTest extends KernelTestCase
 
         $bet = $this->bets->getById(BetId::fromString(self::BET_ID));
         $this->assertSame(BetStatus::Cancelled, $bet->status());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->betId()->equals(BetId::fromString(self::BET_ID)));
     }
 
     public function testCancelIsIdempotent(): void
@@ -153,6 +166,7 @@ final class CancelBetHandlerTest extends KernelTestCase
             BetStatus::Cancelled,
             $this->bets->getById(BetId::fromString(self::BET_ID))->status(),
         );
+        $this->assertCount(1, $this->recordedEvents);
     }
 
     public function testRejectsCancelAfterAccept(): void
