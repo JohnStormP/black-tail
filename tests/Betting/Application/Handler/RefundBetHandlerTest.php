@@ -9,6 +9,7 @@ use App\Betting\Application\Handler\AcceptBetHandler;
 use App\Betting\Application\Handler\PlaceBetHandler;
 use App\Betting\Application\Handler\RefundBetHandler;
 use App\Betting\Domain\Entity\Bet;
+use App\Betting\Domain\Event\BetRefunded;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
@@ -67,6 +68,9 @@ final class RefundBetHandlerTest extends KernelTestCase
     private WalletRepositoryInterface $wallets;
     private LedgerEntryRepositoryInterface $ledger;
 
+    /** @var list<BetRefunded> */
+    private array $recordedEvents = [];
+
     protected function setUp(): void
     {
         self::bootKernel();
@@ -120,9 +124,16 @@ final class RefundBetHandlerTest extends KernelTestCase
             GameId::fromString(self::GAME_ID),
         ));
 
+        $this->recordedEvents = [];
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(BetRefunded::class, function (BetRefunded $event): void {
+            $this->recordedEvents[] = $event;
+        });
+
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
         $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, new EventDispatcher());
-        $this->refund = new RefundBetHandler($this->bets, $this->wallets, $this->ledger, $transactions);
+        $this->refund = new RefundBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, $dispatcher);
         $this->open = new OpenWalletHandler($this->wallets);
         $this->deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
     }
@@ -143,6 +154,9 @@ final class RefundBetHandlerTest extends KernelTestCase
         $entry = $this->ledger->getById(LedgerEntryId::fromString(self::RELEASE_ENTRY_ID));
         $this->assertSame(LedgerEntryType::Release, $entry->type());
         $this->assertSame(100, $entry->amount()->amount());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->betId()->equals(BetId::fromString(self::BET_ID)));
+        $this->assertTrue($this->recordedEvents[0]->walletId()->equals(WalletId::fromString(self::WALLET_ID)));
     }
 
     public function testRefundIsIdempotent(): void
@@ -157,6 +171,7 @@ final class RefundBetHandlerTest extends KernelTestCase
         $this->assertSame(1000, $wallet->availableBalance()->amount());
         $this->assertSame(0, $wallet->reservedBalance()->amount());
         $this->assertSame(BetStatus::Refunded, $this->bets->getById(BetId::fromString(self::BET_ID))->status());
+        $this->assertCount(1, $this->recordedEvents);
     }
 
     public function testRejectsRefundFromPending(): void

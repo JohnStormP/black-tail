@@ -3,6 +3,7 @@
 namespace App\Betting\Application\Handler;
 
 use App\Betting\Application\Command\RefundBetCommand;
+use App\Betting\Domain\Event\BetRefunded;
 use App\Betting\Domain\Exception\InvalidBetException;
 use App\Betting\Domain\Exception\InvalidBetTransitionException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class RefundBetHandler
 {
@@ -26,12 +28,15 @@ final class RefundBetHandler
         private readonly WalletRepositoryInterface $wallets,
         private readonly LedgerEntryRepositoryInterface $ledger,
         private readonly TransactionManagerInterface $transactions,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
     public function __invoke(RefundBetCommand $command): void
     {
-        $this->transactions->transactional(function () use ($command): void {
+        $event = null;
+
+        $this->transactions->transactional(function () use ($command, &$event): void {
             $betId = BetId::fromString($command->betId);
             $walletId = WalletId::fromString($command->walletId);
             $releaseEntryId = LedgerEntryId::fromString($command->releaseEntryId);
@@ -55,11 +60,18 @@ final class RefundBetHandler
                 throw InvalidBetException::walletCurrencyMismatch($betId, $walletId);
             }
 
-            $this->releaseStake($wallet, $walletId, $releaseEntryId, $bet->amount());
+            $amount = $bet->amount();
+            $this->releaseStake($wallet, $walletId, $releaseEntryId, $amount);
 
             $bet->refund();
             $this->bets->save($bet);
+
+            $event = new BetRefunded($betId, $bet->playerId(), $walletId, $amount);
         });
+
+        if (null !== $event) {
+            $this->eventDispatcher->dispatch($event);
+        }
     }
 
     private function releaseStake(
