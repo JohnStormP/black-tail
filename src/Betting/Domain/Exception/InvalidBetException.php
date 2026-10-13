@@ -22,4 +22,14 @@ final class InvalidBetException extends DomainException
     {
         return new self('Wallet "'.$walletId->toString().'" currency does not match bet "'.$betId->toString().'"');
     }
+
+    public static function payoutRequiresEntryId(): self
+    {
+        return new self('Payout entry id is required when payout amount is greater than zero');
+    }
+
+    public static function lostBetCannotHavePayout(): self
+    {
+        return new self('Lost bet cannot have a payout');
+    }
 }
