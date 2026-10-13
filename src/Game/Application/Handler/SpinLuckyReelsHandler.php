@@ -8,9 +8,11 @@ use App\Game\Domain\Exception\GameNotPlayableException;
 use App\Game\Domain\Provider\GameProviderResolver;
 use App\Game\Domain\Repository\GameRepositoryInterface;
 use App\Game\Domain\Repository\GameRoundRepositoryInterface;
+use App\Game\Domain\Repository\TenantGameRepositoryInterface;
 use App\Game\Domain\ValueObject\GameId;
 use App\Game\Domain\ValueObject\GameRoundId;
 use App\Game\Domain\ValueObject\LuckyReelsConfig;
+use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
 use App\Shared\Domain\Random\RandomIntGeneratorInterface;
 
@@ -19,6 +21,8 @@ final class SpinLuckyReelsHandler
     public function __construct(
         private readonly GameRepositoryInterface $games,
         private readonly GameRoundRepositoryInterface $rounds,
+        private readonly TenantGameRepositoryInterface $tenantGames,
+        private readonly PlayerRepositoryInterface $players,
         private readonly GameProviderResolver $resolver,
         private readonly RandomIntGeneratorInterface $rng,
     ) {
@@ -34,6 +38,18 @@ final class SpinLuckyReelsHandler
 
         if (!$game->isActive()) {
             throw GameNotPlayableException::disabled($gameId);
+        }
+
+        $player = $this->players->getById($playerId);
+        $tenantId = $player->tenantId();
+        $link = $this->tenantGames->findByTenantAndGame($tenantId, $gameId);
+
+        if (null === $link) {
+            throw GameNotPlayableException::notAssignedToTenant($gameId, $tenantId);
+        }
+
+        if (!$link->isEnabled()) {
+            throw GameNotPlayableException::disabledForTenant($gameId, $tenantId);
         }
 
         $provider = $this->resolver->resolve($game->code());
