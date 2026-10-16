@@ -79,10 +79,36 @@ final class DoctrinePlayerBonusRepositoryTest extends KernelTestCase
         ));
     }
 
+    public function testFindOldestActiveByPlayer(): void
+    {
+        $playerId = PlayerId::fromString(self::PLAYER_ID);
+        $older = $this->newBonus(
+            PlayerBonusId::fromString(self::BONUS_ID),
+            $playerId,
+            BonusCampaignId::fromString(self::CAMPAIGN_ID),
+            new \DateTimeImmutable('2026-01-01 10:00:00'),
+        );
+        $newer = $this->newBonus(
+            PlayerBonusId::fromString('01EXYZ00000000000000000003'),
+            $playerId,
+            BonusCampaignId::fromString('01FXYZ00000000000000000004'),
+            new \DateTimeImmutable('2026-01-02 10:00:00'),
+        );
+        $this->repository->save($older);
+        $this->repository->save($newer);
+
+        $found = $this->repository->findOldestActiveByPlayer($playerId, Currency::Usd);
+        $this->assertNotNull($found);
+        $this->assertTrue($found->id()->equals(PlayerBonusId::fromString(self::BONUS_ID)));
+
+        $this->assertNull($this->repository->findOldestActiveByPlayer($playerId, Currency::Eur));
+    }
+
     private function newBonus(
         PlayerBonusId $id,
         PlayerId $playerId,
         BonusCampaignId $campaignId,
+        \DateTimeImmutable $grantedAt = new \DateTimeImmutable(),
     ): PlayerBonus {
         return PlayerBonus::grant(
             $id,
@@ -91,6 +117,7 @@ final class DoctrinePlayerBonusRepositoryTest extends KernelTestCase
             TenantId::fromString(self::TENANT_ID),
             Money::of(1000, Currency::Usd),
             Money::of(5000, Currency::Usd),
+            $grantedAt,
         );
     }
 }

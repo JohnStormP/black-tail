@@ -7,7 +7,9 @@ use App\Bonus\Domain\Exception\PlayerBonusNotFoundException;
 use App\Bonus\Domain\Repository\PlayerBonusRepositoryInterface;
 use App\Bonus\Domain\ValueObject\BonusCampaignId;
 use App\Bonus\Domain\ValueObject\PlayerBonusId;
+use App\Bonus\Domain\ValueObject\PlayerBonusStatus;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Wallet\Domain\ValueObject\Currency;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
@@ -46,5 +48,22 @@ final class DoctrinePlayerBonusRepository implements PlayerBonusRepositoryInterf
             'playerId' => $playerId->toString(),
             'campaignId' => $campaignId->toString(),
         ]);
+    }
+
+    public function findOldestActiveByPlayer(PlayerId $playerId, Currency $currency): ?PlayerBonus
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('pb')
+            ->from(PlayerBonus::class, 'pb')
+            ->where('pb.playerId = :playerId')
+            ->andWhere('pb.status = :status')
+            ->andWhere('pb.currency = :currency')
+            ->setParameter('playerId', $playerId->toString())
+            ->setParameter('status', PlayerBonusStatus::Active)
+            ->setParameter('currency', $currency->value)
+            ->orderBy('pb.grantedAt', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
