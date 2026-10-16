@@ -11,4 +11,5 @@ enum LedgerEntryType: string
     case Reserve = 'reserve';
     case Release = 'release';
     case Settle = 'settle';
+    case BonusCredit = 'bonus_credit';
 }

@@ -3,9 +3,11 @@
 namespace App\Bonus\Domain\Exception;
 
 use App\Bonus\Domain\ValueObject\BonusCampaignId;
+use App\Bonus\Domain\ValueObject\PlayerBonusId;
 use App\Player\Domain\ValueObject\PlayerId;
 use App\Shared\Domain\Exception\DomainException;
 use App\Tenant\Domain\ValueObject\TenantId;
+use App\Wallet\Domain\ValueObject\WalletId;
 
 final class InvalidPlayerBonusException extends DomainException
 {
@@ -45,5 +47,20 @@ final class InvalidPlayerBonusException extends DomainException
             'Player "'.$playerId->toString().'" tenant "'.$playerTenantId->toString()
             .'" does not match bonus campaign "'.$campaignId->toString().'" tenant "'.$campaignTenantId->toString().'"'
         );
+    }
+
+    public static function walletPlayerMismatch(PlayerBonusId $playerBonusId, WalletId $walletId): self
+    {
+        return new self('Wallet "'.$walletId->toString().'" does not belong to the player of bonus "'.$playerBonusId->toString().'"');
+    }
+
+    public static function walletCurrencyMismatch(PlayerBonusId $playerBonusId, WalletId $walletId): self
+    {
+        return new self('Wallet "'.$walletId->toString().'" currency does not match bonus "'.$playerBonusId->toString().'"');
+    }
+
+    public static function cannotCreditInactiveBonus(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" is not active and cannot be credited');
     }
 }
