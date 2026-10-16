@@ -2,7 +2,10 @@
 
 namespace App\Bonus\Domain\Exception;
 
+use App\Bonus\Domain\ValueObject\BonusCampaignId;
+use App\Player\Domain\ValueObject\PlayerId;
 use App\Shared\Domain\Exception\DomainException;
+use App\Tenant\Domain\ValueObject\TenantId;
 
 final class InvalidPlayerBonusException extends DomainException
 {
@@ -24,5 +27,23 @@ final class InvalidPlayerBonusException extends DomainException
     public static function nonPositiveWageringAmount(): self
     {
         return new self('Wagering amount must be greater than zero');
+    }
+
+    public static function playerNotActive(PlayerId $playerId): self
+    {
+        return new self('Player with id "'.$playerId->toString().'" is not active and cannot receive a bonus');
+    }
+
+    public static function campaignNotActive(BonusCampaignId $campaignId): self
+    {
+        return new self('Bonus campaign with id "'.$campaignId->toString().'" is not active');
+    }
+
+    public static function tenantMismatch(PlayerId $playerId, BonusCampaignId $campaignId, TenantId $playerTenantId, TenantId $campaignTenantId): self
+    {
+        return new self(
+            'Player "'.$playerId->toString().'" tenant "'.$playerTenantId->toString()
+            .'" does not match bonus campaign "'.$campaignId->toString().'" tenant "'.$campaignTenantId->toString().'"'
+        );
     }
 }
