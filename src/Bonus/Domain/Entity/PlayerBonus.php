@@ -15,6 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'player_bonuses')]
+#[ORM\UniqueConstraint(name: 'uniq_player_bonuses_player_campaign', columns: ['player_id', 'campaign_id'])]
 class PlayerBonus
 {
     #[ORM\Id]
