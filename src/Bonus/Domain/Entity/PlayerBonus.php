@@ -49,6 +49,9 @@ class PlayerBonus
     #[ORM\Column(name: 'granted_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $grantedAt;
 
+    #[ORM\Column(name: 'expires_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $expiresAt;
+
     private function __construct()
     {
     }
@@ -61,6 +64,7 @@ class PlayerBonus
         Money $grantedAmount,
         Money $wageringRequired,
         \DateTimeImmutable $grantedAt = new \DateTimeImmutable(),
+        ?\DateTimeImmutable $expiresAt = null,
     ): self {
         if ($grantedAmount->amount() <= 0) {
             throw InvalidPlayerBonusException::nonPositiveGrantedAmount();
@@ -73,6 +77,11 @@ class PlayerBonus
         if ($grantedAmount->currency() !== $wageringRequired->currency()) {
             throw InvalidPlayerBonusException::currencyMismatch();
         }
+
+        if (null !== $expiresAt && $expiresAt <= $grantedAt) {
+            throw InvalidPlayerBonusException::invalidExpiration();
+        }
+
         $bonus = new self();
         $bonus->id = $id->toString();
         $bonus->playerId = $playerId->toString();
@@ -84,6 +93,7 @@ class PlayerBonus
         $bonus->wageringProgressMinor = 0;
         $bonus->status = PlayerBonusStatus::Active;
         $bonus->grantedAt = $grantedAt;
+        $bonus->expiresAt = $expiresAt;
 
         return $bonus;
     }
@@ -140,9 +150,31 @@ class PlayerBonus
         return $this->grantedAt;
     }
 
+    public function expiresAt(): ?\DateTimeImmutable
+    {
+        return $this->expiresAt;
+    }
+
     public function isActive(): bool
     {
         return PlayerBonusStatus::Active === $this->status;
+    }
+
+    public function expire(\DateTimeImmutable $now = new \DateTimeImmutable()): void
+    {
+        if (PlayerBonusStatus::Active !== $this->status) {
+            throw InvalidPlayerBonusTransitionException::cannotTransition($this->status, PlayerBonusStatus::Expired);
+        }
+
+        if (null === $this->expiresAt) {
+            throw InvalidPlayerBonusException::missingExpiration($this->id());
+        }
+
+        if ($now < $this->expiresAt) {
+            throw InvalidPlayerBonusException::notYetExpired($this->id(), $this->expiresAt);
+        }
+
+        $this->status = PlayerBonusStatus::Expired;
     }
 
     public function applyWagering(Money $amount): void

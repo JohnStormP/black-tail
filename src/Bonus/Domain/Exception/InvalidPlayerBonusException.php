@@ -63,4 +63,22 @@ final class InvalidPlayerBonusException extends DomainException
     {
         return new self('Player bonus with id "'.$playerBonusId->toString().'" is not active and cannot be credited');
     }
+
+    public static function invalidExpiration(): self
+    {
+        return new self('Player bonus expiration must be after granted at');
+    }
+
+    public static function missingExpiration(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" has no expiration date');
+    }
+
+    public static function notYetExpired(PlayerBonusId $playerBonusId, \DateTimeImmutable $expiresAt): self
+    {
+        return new self(
+            'Player bonus with id "'.$playerBonusId->toString()
+            .'" cannot be expired before "'.$expiresAt->format(\DateTimeInterface::ATOM).'"'
+        );
+    }
 }

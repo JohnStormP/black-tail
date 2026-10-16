@@ -53,13 +53,19 @@ final class GrantPlayerBonusHandler
             throw PlayerBonusAlreadyGrantedException::forPlayerAndCampaign($playerId, $bonusCampaignId);
         }
 
+        $expiresAt = null !== $command->expiresAt
+            ? new \DateTimeImmutable($command->expiresAt)
+            : null;
+
         $bonus = PlayerBonus::grant(
             $playerBonusId,
             $playerId,
             $bonusCampaignId,
             $player->tenantId(),
             $campaign->bonusAmount(),
-            $campaign->requiredWager()
+            $campaign->requiredWager(),
+            new \DateTimeImmutable(),
+            $expiresAt,
         );
         try {
             $this->playerBonuses->save($bonus);

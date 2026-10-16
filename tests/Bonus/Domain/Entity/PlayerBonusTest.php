@@ -136,10 +136,73 @@ final class PlayerBonusTest extends TestCase
         $bonus->cancel();
     }
 
+    public function testGrantStoresExpiresAt(): void
+    {
+        $grantedAt = new \DateTimeImmutable('2026-01-15 12:00:00');
+        $expiresAt = new \DateTimeImmutable('2026-01-22 12:00:00');
+        $bonus = $this->grant(1000, 5000, $grantedAt, $expiresAt);
+
+        $this->assertEquals($expiresAt, $bonus->expiresAt());
+    }
+
+    public function testGrantRejectsExpiresAtNotAfterGrantedAt(): void
+    {
+        $grantedAt = new \DateTimeImmutable('2026-01-15 12:00:00');
+
+        $this->expectException(InvalidPlayerBonusException::class);
+
+        $this->grant(1000, 5000, $grantedAt, $grantedAt);
+    }
+
+    public function testExpireFromActiveWhenDue(): void
+    {
+        $grantedAt = new \DateTimeImmutable('2026-01-15 12:00:00');
+        $expiresAt = new \DateTimeImmutable('2026-01-22 12:00:00');
+        $bonus = $this->grant(1000, 5000, $grantedAt, $expiresAt);
+
+        $bonus->expire(new \DateTimeImmutable('2026-01-22 12:00:00'));
+
+        $this->assertSame(PlayerBonusStatus::Expired, $bonus->status());
+        $this->assertFalse($bonus->isActive());
+    }
+
+    public function testRejectsExpireBeforeDue(): void
+    {
+        $grantedAt = new \DateTimeImmutable('2026-01-15 12:00:00');
+        $expiresAt = new \DateTimeImmutable('2026-01-22 12:00:00');
+        $bonus = $this->grant(1000, 5000, $grantedAt, $expiresAt);
+
+        $this->expectException(InvalidPlayerBonusException::class);
+
+        $bonus->expire(new \DateTimeImmutable('2026-01-20 12:00:00'));
+    }
+
+    public function testRejectsExpireWithoutExpiresAt(): void
+    {
+        $bonus = $this->grant(1000, 5000);
+
+        $this->expectException(InvalidPlayerBonusException::class);
+
+        $bonus->expire();
+    }
+
+    public function testRejectsExpireWhenNotActive(): void
+    {
+        $grantedAt = new \DateTimeImmutable('2026-01-15 12:00:00');
+        $expiresAt = new \DateTimeImmutable('2026-01-22 12:00:00');
+        $bonus = $this->grant(1000, 5000, $grantedAt, $expiresAt);
+        $bonus->cancel();
+
+        $this->expectException(InvalidPlayerBonusTransitionException::class);
+
+        $bonus->expire(new \DateTimeImmutable('2026-01-23 12:00:00'));
+    }
+
     private function grant(
         int $grantedMinor,
         int $wageringRequiredMinor,
         \DateTimeImmutable $grantedAt = new \DateTimeImmutable(),
+        ?\DateTimeImmutable $expiresAt = null,
     ): PlayerBonus {
         return PlayerBonus::grant(
             PlayerBonusId::fromString(self::BONUS_ID),
@@ -149,6 +212,7 @@ final class PlayerBonusTest extends TestCase
             Money::of($grantedMinor, Currency::Usd),
             Money::of($wageringRequiredMinor, Currency::Usd),
             $grantedAt,
+            $expiresAt,
         );
     }
 }

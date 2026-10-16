@@ -8,6 +8,7 @@ final readonly class GrantPlayerBonusCommand
         public string $playerBonusId,
         public string $playerId,
         public string $campaignId,
+        public ?string $expiresAt = null,
     ) {
     }
 }
