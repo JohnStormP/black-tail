@@ -12,6 +12,7 @@ use App\Bonus\Application\Handler\CreateBonusCampaignHandler;
 use App\Bonus\Application\Handler\GrantPlayerBonusHandler;
 use App\Bonus\Domain\Entity\BonusCampaign;
 use App\Bonus\Domain\Entity\PlayerBonus;
+use App\Bonus\Domain\Event\PlayerBonusCompleted;
 use App\Bonus\Domain\Exception\InvalidPlayerBonusException;
 use App\Bonus\Domain\Exception\InvalidPlayerBonusTransitionException;
 use App\Bonus\Domain\Exception\PlayerBonusNotFoundException;
@@ -28,6 +29,7 @@ use App\Tenant\Domain\Repository\TenantRepositoryInterface;
 use App\Tenant\Domain\ValueObject\TenantId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
 {
@@ -39,6 +41,9 @@ final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
     private ApplyPlayerBonusWageringHandler $apply;
     private GrantPlayerBonusHandler $grant;
     private PlayerBonusRepositoryInterface $playerBonuses;
+
+    /** @var list<PlayerBonusCompleted> */
+    private array $recordedEvents = [];
 
     protected function setUp(): void
     {
@@ -74,7 +79,13 @@ final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
         $createCampaign = new CreateBonusCampaignHandler($campaigns, $tenants);
         $activateCampaign = new ActivateBonusCampaignHandler($campaigns);
         $this->grant = new GrantPlayerBonusHandler($this->playerBonuses, $campaigns, $players);
-        $this->apply = new ApplyPlayerBonusWageringHandler($this->playerBonuses);
+
+        $this->recordedEvents = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(PlayerBonusCompleted::class, function (PlayerBonusCompleted $event): void {
+            $this->recordedEvents[] = $event;
+        });
+        $this->apply = new ApplyPlayerBonusWageringHandler($this->playerBonuses, $dispatcher);
 
         ($createCampaign)(new CreateBonusCampaignCommand(
             self::CAMPAIGN_ID,
@@ -97,6 +108,7 @@ final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
         $this->assertSame(2000, $bonus->wageringProgress()->amount());
         $this->assertSame(3000, $bonus->remainingWagering()->amount());
         $this->assertSame(PlayerBonusStatus::Active, $bonus->status());
+        $this->assertCount(0, $this->recordedEvents);
     }
 
     public function testCompletesWhenRequirementMet(): void
@@ -109,6 +121,10 @@ final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
         $this->assertSame(5000, $bonus->wageringProgress()->amount());
         $this->assertSame(0, $bonus->remainingWagering()->amount());
         $this->assertSame(PlayerBonusStatus::Completed, $bonus->status());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->playerBonusId()->equals(
+            PlayerBonusId::fromString(self::PLAYER_BONUS_ID),
+        ));
     }
 
     public function testRejectsZeroAmount(): void

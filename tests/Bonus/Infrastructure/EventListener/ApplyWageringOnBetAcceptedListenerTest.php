@@ -5,10 +5,12 @@ namespace App\Tests\Bonus\Infrastructure\EventListener;
 use App\Betting\Domain\Event\BetAccepted;
 use App\Betting\Domain\ValueObject\BetId;
 use App\Bonus\Domain\Entity\PlayerBonus;
+use App\Bonus\Domain\Event\PlayerBonusCompleted;
 use App\Bonus\Domain\Repository\PlayerBonusRepositoryInterface;
 use App\Bonus\Domain\ValueObject\BonusCampaignId;
 use App\Bonus\Domain\ValueObject\PlayerBonusId;
 use App\Bonus\Domain\ValueObject\PlayerBonusStatus;
+use App\Bonus\Infrastructure\EventListener\ApplyWageringOnBetAcceptedListener;
 use App\Player\Domain\ValueObject\PlayerId;
 use App\Tenant\Domain\ValueObject\TenantId;
 use App\Wallet\Domain\ValueObject\Currency;
@@ -16,7 +18,7 @@ use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
 {
@@ -28,7 +30,10 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
     private const string WALLET_ID = '01FXYZ00000000000000000004';
 
     private PlayerBonusRepositoryInterface $playerBonuses;
-    private EventDispatcherInterface $dispatcher;
+    private ApplyWageringOnBetAcceptedListener $listener;
+
+    /** @var list<PlayerBonusCompleted> */
+    private array $recordedEvents = [];
 
     protected function setUp(): void
     {
@@ -38,9 +43,12 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
         self::assertInstanceOf(PlayerBonusRepositoryInterface::class, $playerBonuses);
         $this->playerBonuses = $playerBonuses;
 
-        $dispatcher = self::getContainer()->get('event_dispatcher');
-        self::assertInstanceOf(EventDispatcherInterface::class, $dispatcher);
-        $this->dispatcher = $dispatcher;
+        $this->recordedEvents = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(PlayerBonusCompleted::class, function (PlayerBonusCompleted $event): void {
+            $this->recordedEvents[] = $event;
+        });
+        $this->listener = new ApplyWageringOnBetAcceptedListener($this->playerBonuses, $dispatcher);
 
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
@@ -58,7 +66,7 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
             Money::of(5000, Currency::Usd),
         ));
 
-        $this->dispatcher->dispatch(new BetAccepted(
+        ($this->listener)(new BetAccepted(
             BetId::fromString(self::BET_ID),
             PlayerId::fromString(self::PLAYER_ID),
             WalletId::fromString(self::WALLET_ID),
@@ -68,11 +76,12 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
         $bonus = $this->playerBonuses->getById(PlayerBonusId::fromString(self::BONUS_ID));
         $this->assertSame(2000, $bonus->wageringProgress()->amount());
         $this->assertSame(PlayerBonusStatus::Active, $bonus->status());
+        $this->assertCount(0, $this->recordedEvents);
     }
 
     public function testDoesNothingWhenNoActiveBonus(): void
     {
-        $this->dispatcher->dispatch(new BetAccepted(
+        ($this->listener)(new BetAccepted(
             BetId::fromString(self::BET_ID),
             PlayerId::fromString(self::PLAYER_ID),
             WalletId::fromString(self::WALLET_ID),
@@ -83,6 +92,7 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
             PlayerId::fromString(self::PLAYER_ID),
             Currency::Usd,
         ));
+        $this->assertCount(0, $this->recordedEvents);
     }
 
     public function testCompletesBonusWhenRequirementMet(): void
@@ -96,7 +106,7 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
             Money::of(2000, Currency::Usd),
         ));
 
-        $this->dispatcher->dispatch(new BetAccepted(
+        ($this->listener)(new BetAccepted(
             BetId::fromString(self::BET_ID),
             PlayerId::fromString(self::PLAYER_ID),
             WalletId::fromString(self::WALLET_ID),
@@ -106,5 +116,9 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
         $bonus = $this->playerBonuses->getById(PlayerBonusId::fromString(self::BONUS_ID));
         $this->assertSame(PlayerBonusStatus::Completed, $bonus->status());
         $this->assertSame(2000, $bonus->wageringProgress()->amount());
+        $this->assertCount(1, $this->recordedEvents);
+        $this->assertTrue($this->recordedEvents[0]->playerBonusId()->equals(
+            PlayerBonusId::fromString(self::BONUS_ID),
+        ));
     }
 }
