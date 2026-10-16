@@ -56,6 +56,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Bonus/Domain/Entity'
                 prefix: 'App\Bonus\Domain\Entity'
                 alias: Bonus
+            Payment:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Payment/Domain/Entity'
+                prefix: 'App\Payment\Domain\Entity'
+                alias: Payment
 
 when@test:
     doctrine:
