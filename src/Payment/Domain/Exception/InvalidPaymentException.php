@@ -43,4 +43,21 @@ final class InvalidPaymentException extends DomainException
     {
         return new self('Wallet "'.$walletId->toString().'" currency does not match payment "'.$paymentId->toString().'"');
     }
+
+    public static function emptyProviderReference(): self
+    {
+        return new self('Payment provider reference cannot be empty');
+    }
+
+    public static function releaseEntryRequiredForFailedWithdrawal(): self
+    {
+        return new self('Release ledger entry id is required when a withdrawal payment fails');
+    }
+
+    public static function webhookCannotApply(PaymentId $paymentId, string $status): self
+    {
+        return new self(
+            'Cannot apply webhook to payment "'.$paymentId->toString().'" in status "'.$status.'"'
+        );
+    }
 }

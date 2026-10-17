@@ -7,6 +7,7 @@ use App\Payment\Domain\Exception\PaymentNotFoundException;
 use App\Payment\Domain\Repository\PaymentRepositoryInterface;
 use App\Payment\Domain\ValueObject\PaymentId;
 use App\Payment\Domain\ValueObject\PaymentIdempotencyKey;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\OptimisticLockException;
@@ -55,5 +56,32 @@ final class DoctrinePaymentRepository implements PaymentRepositoryInterface
         return $this->entityManager->getRepository(Payment::class)->findOneBy([
             'idempotencyKey' => $key->toString(),
         ]);
+    }
+
+    public function findByProviderReference(string $provider, string $providerReference): ?Payment
+    {
+        return $this->entityManager->getRepository(Payment::class)->findOneBy([
+            'provider' => trim($provider),
+            'providerReference' => trim($providerReference),
+        ]);
+    }
+
+    /**
+     * @throws OptimisticLockException
+     * @throws ORMException
+     */
+    public function getByIdForUpdate(PaymentId $id): Payment
+    {
+        $payment = $this->entityManager->find(
+            Payment::class,
+            $id->toString(),
+            LockMode::PESSIMISTIC_WRITE,
+        );
+
+        if (null === $payment) {
+            throw PaymentNotFoundException::withId($id);
+        }
+
+        return $payment;
     }
 }

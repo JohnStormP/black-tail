@@ -82,6 +82,18 @@ final class DoctrinePaymentRepositoryTest extends KernelTestCase
         ));
     }
 
+    public function testFindByProviderReference(): void
+    {
+        $id = PaymentId::fromString(self::PAYMENT_ID);
+        $this->repository->save($this->newPayment($id, PaymentIdempotencyKey::fromString(self::IDEMPOTENCY_KEY)));
+
+        $found = $this->repository->findByProviderReference('fake', 'prov-ref-1');
+        $this->assertNotNull($found);
+        $this->assertTrue($found->id()->equals($id));
+
+        $this->assertNull($this->repository->findByProviderReference('fake', 'missing'));
+    }
+
     private function newPayment(PaymentId $id, PaymentIdempotencyKey $key): Payment
     {
         return Payment::initiate(

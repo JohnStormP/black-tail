@@ -19,4 +19,11 @@ interface PaymentRepositoryInterface
     public function getById(PaymentId $id): Payment;
 
     public function findByIdempotencyKey(PaymentIdempotencyKey $key): ?Payment;
+
+    public function findByProviderReference(string $provider, string $providerReference): ?Payment;
+
+    /**
+     * @throws PaymentNotFoundException
+     */
+    public function getByIdForUpdate(PaymentId $id): Payment;
 }

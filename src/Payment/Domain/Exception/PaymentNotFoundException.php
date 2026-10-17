@@ -11,4 +11,11 @@ final class PaymentNotFoundException extends DomainException
     {
         return new self('Payment with id "'.$id->toString().'" cannot be found');
     }
+
+    public static function withProviderReference(string $provider, string $providerReference): self
+    {
+        return new self(
+            'Payment with provider "'.$provider.'" and reference "'.$providerReference.'" cannot be found'
+        );
+    }
 }
