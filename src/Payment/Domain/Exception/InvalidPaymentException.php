@@ -31,7 +31,7 @@ final class InvalidPaymentException extends DomainException
 
     public static function walletNotActive(WalletId $walletId): self
     {
-        return new self('Wallet with id "'.$walletId->toString().'" is not active and cannot receive a payment');
+        return new self('Wallet with id "'.$walletId->toString().'" is not active and cannot be used for a payment');
     }
 
     public static function walletPlayerMismatch(PaymentId $paymentId, WalletId $walletId): self
