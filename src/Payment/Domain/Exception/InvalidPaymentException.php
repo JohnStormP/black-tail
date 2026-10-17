@@ -60,4 +60,20 @@ final class InvalidPaymentException extends DomainException
             'Cannot apply webhook to payment "'.$paymentId->toString().'" in status "'.$status.'"'
         );
     }
+
+    public static function notYetStale(
+        PaymentId $paymentId,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $staleBefore,
+    ): self {
+        return new self(
+            'Payment "'.$paymentId->toString().'" created at "'.$createdAt->format(\DateTimeInterface::ATOM)
+            .'" is not stale before "'.$staleBefore->format(\DateTimeInterface::ATOM).'"'
+        );
+    }
+
+    public static function cannotFailStaleCompleted(PaymentId $paymentId): self
+    {
+        return new self('Cannot fail stale payment "'.$paymentId->toString().'" because it is already completed');
+    }
 }
