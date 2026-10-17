@@ -170,10 +170,14 @@ class Payment
         return PaymentStatus::Completed === $this->status;
     }
 
-    public function markProcessing(): void
+    public function markProcessing(?string $providerReference = null): void
     {
         if (PaymentStatus::Pending !== $this->status) {
             throw InvalidPaymentTransitionException::cannotTransition($this->status, PaymentStatus::Processing);
+        }
+
+        if (null !== $providerReference) {
+            $this->providerReference = trim($providerReference) ?: null;
         }
 
         $this->status = PaymentStatus::Processing;

@@ -74,6 +74,15 @@ final class PaymentTest extends TestCase
         $this->assertSame(PaymentStatus::Processing, $payment->status());
     }
 
+    public function testMarkProcessingSetsProviderReference(): void
+    {
+        $payment = $this->initiate(PaymentType::Deposit, 1000, 'fake');
+        $payment->markProcessing('fake-01ARZ3NDEKTSV4RRFFQ69G5FAV');
+
+        $this->assertSame(PaymentStatus::Processing, $payment->status());
+        $this->assertSame('fake-01ARZ3NDEKTSV4RRFFQ69G5FAV', $payment->providerReference());
+    }
+
     public function testMarkProcessingRejectsFromProcessing(): void
     {
         $payment = $this->initiate(PaymentType::Deposit, 1000, 'fake');
