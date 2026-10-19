@@ -21,6 +21,7 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Tenant\Domain\Entity\Tenant;
 use App\Tenant\Domain\Repository\TenantRepositoryInterface;
@@ -115,6 +116,9 @@ final class InitiateWithdrawalHandlerTest extends KernelTestCase
         $deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
         ($deposit)(new DepositWalletCommand(self::WALLET_ID, self::DEPOSIT_ENTRY_ID, 5000));
 
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
         $this->handler = new InitiateWithdrawalHandler(
             $this->payments,
             $this->players,
@@ -122,6 +126,7 @@ final class InitiateWithdrawalHandlerTest extends KernelTestCase
             $this->ledger,
             new PaymentProviderResolver([new FakePaymentProvider()]),
             $transactions,
+            $risk,
         );
     }
 
@@ -210,6 +215,9 @@ final class InitiateWithdrawalHandlerTest extends KernelTestCase
         $transactions = self::getContainer()->get(TransactionManagerInterface::class);
         self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
 
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
         $handler = new InitiateWithdrawalHandler(
             $this->payments,
             $this->players,
@@ -217,6 +225,7 @@ final class InitiateWithdrawalHandlerTest extends KernelTestCase
             $this->ledger,
             new PaymentProviderResolver([$declining]),
             $transactions,
+            $risk,
         );
 
         ($handler)($this->command(

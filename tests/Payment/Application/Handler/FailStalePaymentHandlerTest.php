@@ -21,6 +21,7 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Tenant\Domain\Entity\Tenant;
 use App\Tenant\Domain\Repository\TenantRepositoryInterface;
@@ -107,11 +108,15 @@ final class FailStalePaymentHandlerTest extends KernelTestCase
         ($deposit)(new DepositWalletCommand(self::WALLET_ID, self::SEED_DEPOSIT_ENTRY_ID, 5000));
 
         $resolver = new PaymentProviderResolver([new FakePaymentProvider()]);
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
         $this->initiateDeposit = new InitiateDepositHandler(
             $this->payments,
             $players,
             $this->wallets,
             $resolver,
+            $risk,
         );
         $this->initiateWithdrawal = new InitiateWithdrawalHandler(
             $this->payments,
@@ -120,6 +125,7 @@ final class FailStalePaymentHandlerTest extends KernelTestCase
             $this->ledger,
             $resolver,
             $transactions,
+            $risk,
         );
         $this->failStale = new FailStalePaymentHandler(
             $this->payments,

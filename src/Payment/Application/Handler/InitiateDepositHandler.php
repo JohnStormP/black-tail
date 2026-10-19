@@ -14,6 +14,8 @@ use App\Payment\Domain\ValueObject\PaymentIdempotencyKey;
 use App\Payment\Domain\ValueObject\PaymentType;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
+use App\Risk\Domain\ValueObject\RiskOperation;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\Currency;
 use App\Wallet\Domain\ValueObject\Money;
@@ -27,6 +29,7 @@ final class InitiateDepositHandler
         private readonly PlayerRepositoryInterface $players,
         private readonly WalletRepositoryInterface $wallets,
         private readonly PaymentProviderResolver $providers,
+        private readonly RiskGuard $risk,
     ) {
     }
 
@@ -65,6 +68,13 @@ final class InitiateDepositHandler
             }
             throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
         }
+
+        $this->risk->assertAllowed(
+            $player->tenantId(),
+            $playerId,
+            RiskOperation::Deposit,
+            $money->amount(),
+        );
 
         $payment = Payment::initiate($paymentId, $player->tenantId(), $playerId, $walletId, PaymentType::Deposit, $money, $paymentIdempotencyKey, $command->provider);
 

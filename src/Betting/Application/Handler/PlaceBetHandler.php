@@ -16,6 +16,8 @@ use App\Game\Domain\ValueObject\GameId;
 use App\Game\Domain\ValueObject\GameRoundId;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
+use App\Risk\Domain\ValueObject\RiskOperation;
 use App\Wallet\Domain\ValueObject\Currency;
 use App\Wallet\Domain\ValueObject\Money;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -29,6 +31,7 @@ final class PlaceBetHandler
         private readonly GameRepositoryInterface $games,
         private readonly TenantGameRepositoryInterface $tenantGames,
         private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly RiskGuard $risk,
     ) {
     }
 
@@ -67,6 +70,13 @@ final class PlaceBetHandler
 
             throw BetIdempotencyConflictException::forKey($idempotencyKey);
         }
+
+        $this->risk->assertAllowed(
+            $tenantId,
+            $playerId,
+            RiskOperation::Bet,
+            $amount->amount(),
+        );
 
         $bet = Bet::place(
             $betId,

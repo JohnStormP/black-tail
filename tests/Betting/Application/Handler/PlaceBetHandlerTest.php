@@ -24,6 +24,7 @@ use App\Player\Domain\Exception\PlayerNotFoundException;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
 use App\Tenant\Domain\ValueObject\TenantId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -95,7 +96,10 @@ final class PlaceBetHandlerTest extends KernelTestCase
             $this->recordedEvents[] = $event;
         });
 
-        $this->handler = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, $dispatcher);
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
+        $this->handler = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, $dispatcher, $risk);
     }
 
     public function testPlacesPendingBet(): void

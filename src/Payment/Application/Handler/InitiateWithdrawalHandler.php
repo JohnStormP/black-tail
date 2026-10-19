@@ -14,6 +14,8 @@ use App\Payment\Domain\ValueObject\PaymentIdempotencyKey;
 use App\Payment\Domain\ValueObject\PaymentType;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
+use App\Risk\Domain\ValueObject\RiskOperation;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
@@ -35,6 +37,7 @@ final class InitiateWithdrawalHandler
         private readonly LedgerEntryRepositoryInterface $ledger,
         private readonly PaymentProviderResolver $providers,
         private readonly TransactionManagerInterface $transactions,
+        private readonly RiskGuard $risk,
     ) {
     }
 
@@ -76,6 +79,13 @@ final class InitiateWithdrawalHandler
             }
             throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
         }
+
+        $this->risk->assertAllowed(
+            $player->tenantId(),
+            $playerId,
+            RiskOperation::Withdrawal,
+            $money->amount(),
+        );
 
         $this->transactions->transactional(function () use (
             $releaseEntryId,

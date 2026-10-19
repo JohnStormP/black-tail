@@ -25,6 +25,7 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Tenant\Domain\ValueObject\TenantId;
 use App\Wallet\Application\Command\DepositWalletCommand;
@@ -120,7 +121,10 @@ final class CancelBetHandlerTest extends KernelTestCase
             $this->recordedEvents[] = $event;
         });
 
-        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher());
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
+        $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher(), $risk);
         $this->accept = new AcceptBetHandler($this->bets, $wallets, $ledger, $transactions, new EventDispatcher());
         $this->cancel = new CancelBetHandler($this->bets, $dispatcher);
         $this->open = new OpenWalletHandler($wallets);

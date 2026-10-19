@@ -21,6 +21,7 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Risk\Application\Service\RiskGuard;
 use App\Tenant\Domain\Entity\Tenant;
 use App\Tenant\Domain\Repository\TenantRepositoryInterface;
 use App\Tenant\Domain\ValueObject\TenantId;
@@ -94,11 +95,15 @@ final class InitiateDepositHandlerTest extends KernelTestCase
         ($open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
         ($open)(new OpenWalletCommand(self::OTHER_WALLET_ID, self::OTHER_PLAYER_ID, 'USD'));
 
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
         $this->handler = new InitiateDepositHandler(
             $this->payments,
             $this->players,
             $this->wallets,
             new PaymentProviderResolver([new FakePaymentProvider()]),
+            $risk,
         );
     }
 
@@ -189,11 +194,15 @@ final class InitiateDepositHandlerTest extends KernelTestCase
             }
         };
 
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
         $handler = new InitiateDepositHandler(
             $this->payments,
             $this->players,
             $this->wallets,
             new PaymentProviderResolver([$declining]),
+            $risk,
         );
 
         ($handler)($this->command(paymentId: '01GXYZ00000000000000000005', idempotencyKey: 'dep-declined-001'));
