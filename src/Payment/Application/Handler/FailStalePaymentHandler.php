@@ -52,55 +52,53 @@ final class FailStalePaymentHandler
             return;
         }
 
-        if (PaymentStatus::Processing === $payment->status()) {
-            if (
-                PaymentType::Withdrawal === $payment->type()
-                && (null === $releaseEntryId || '' === trim($releaseEntryId))
-            ) {
-                throw InvalidPaymentException::releaseEntryRequiredForFailedWithdrawal();
+        if (
+            PaymentType::Withdrawal === $payment->type()
+            && (null === $releaseEntryId || '' === trim($releaseEntryId))
+        ) {
+            throw InvalidPaymentException::releaseEntryRequiredForFailedWithdrawal();
+        }
+
+        $this->transactions->transactional(function () use ($command, $payment): void {
+            $wallet = $this->wallets->getByIdForUpdate($payment->walletId());
+            $payment = $this->payments->getByIdForUpdate($payment->id());
+
+            if (PaymentStatus::Failed === $payment->status()) {
+                return;
             }
 
-            $this->transactions->transactional(function () use ($command, $payment): void {
-                $wallet = $this->wallets->getByIdForUpdate($payment->walletId());
-                $payment = $this->payments->getByIdForUpdate($payment->id());
+            $payment->fail($command->reason);
+            $this->payments->save($payment);
 
-                if (PaymentStatus::Failed === $payment->status()) {
-                    return;
+            if (PaymentType::Withdrawal !== $payment->type()) {
+                return;
+            }
+
+            $releaseEntryId = LedgerEntryId::fromString((string) $command->releaseEntryId);
+            $money = $payment->amount();
+            $existingRelease = $this->ledger->findById($releaseEntryId);
+
+            if (null !== $existingRelease) {
+                if (
+                    !$existingRelease->walletId()->equals($wallet->id())
+                    || LedgerEntryType::Release !== $existingRelease->type()
+                    || !$existingRelease->amount()->equals($money)
+                ) {
+                    throw LedgerIdempotencyConflictException::forEntry($releaseEntryId);
                 }
 
-                $payment->fail($command->reason);
-                $this->payments->save($payment);
+                return;
+            }
 
-                if (PaymentType::Withdrawal !== $payment->type()) {
-                    return;
-                }
-
-                $releaseEntryId = LedgerEntryId::fromString((string) $command->releaseEntryId);
-                $money = $payment->amount();
-                $existingRelease = $this->ledger->findById($releaseEntryId);
-
-                if (null !== $existingRelease) {
-                    if (
-                        !$existingRelease->walletId()->equals($wallet->id())
-                        || LedgerEntryType::Release !== $existingRelease->type()
-                        || !$existingRelease->amount()->equals($money)
-                    ) {
-                        throw LedgerIdempotencyConflictException::forEntry($releaseEntryId);
-                    }
-
-                    return;
-                }
-
-                $wallet->release($money);
-                $this->wallets->save($wallet);
-                $this->ledger->save(LedgerEntry::record(
-                    $releaseEntryId,
-                    $wallet->id(),
-                    LedgerEntryType::Release,
-                    $money,
-                    $wallet->availableBalance(),
-                ));
-            });
-        }
+            $wallet->release($money);
+            $this->wallets->save($wallet);
+            $this->ledger->save(LedgerEntry::record(
+                $releaseEntryId,
+                $wallet->id(),
+                LedgerEntryType::Release,
+                $money,
+                $wallet->availableBalance(),
+            ));
+        });
     }
 }
