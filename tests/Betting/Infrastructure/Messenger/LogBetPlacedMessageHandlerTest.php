@@ -1,21 +1,15 @@
 <?php
 
-namespace App\Tests\Betting\Infrastructure\EventListener;
+namespace App\Tests\Betting\Infrastructure\Messenger;
 
-use App\Betting\Domain\Event\BetPlaced;
-use App\Betting\Domain\ValueObject\BetId;
-use App\Betting\Infrastructure\EventListener\LogBetPlacedListener;
-use App\Game\Domain\ValueObject\GameId;
-use App\Game\Domain\ValueObject\GameRoundId;
-use App\Player\Domain\ValueObject\PlayerId;
-use App\Wallet\Domain\ValueObject\Currency;
-use App\Wallet\Domain\ValueObject\Money;
+use App\Betting\Application\Message\LogBetPlacedMessage;
+use App\Betting\Infrastructure\Messenger\LogBetPlacedMessageHandler;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 
-final class LogBetPlacedListenerTest extends TestCase
+final class LogBetPlacedMessageHandlerTest extends TestCase
 {
-    public function testLogsBetPlaced(): void
+    public function testLogsBetPlacedMessage(): void
     {
         $logger = new class extends AbstractLogger {
             /** @var list<array{level: string, message: string, context: array<string, mixed>}> */
@@ -31,13 +25,12 @@ final class LogBetPlacedListenerTest extends TestCase
             }
         };
 
-        $listener = new LogBetPlacedListener($logger);
-        $listener(new BetPlaced(
-            BetId::fromString('01ARZ3NDEKTSV4RRFFQ69G5FAV'),
-            PlayerId::fromString('01BX5ZZKBKACTAV9WEVGEMMVRY'),
-            GameId::fromString('01CXYZ00000000000000000001'),
-            GameRoundId::fromString('01DXYZ00000000000000000002'),
-            Money::of(100, Currency::Usd),
+        $handler = new LogBetPlacedMessageHandler($logger);
+        $handler(new LogBetPlacedMessage(
+            '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+            '01BX5ZZKBKACTAV9WEVGEMMVRY',
+            100,
+            'USD',
         ));
 
         $this->assertCount(1, $logger->records);

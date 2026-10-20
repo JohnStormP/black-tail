@@ -10,8 +10,7 @@ framework:
 #            sync: 'sync://'
 
         routing:
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            App\Betting\Application\Message\LogBetPlacedMessage: async
 
 when@test:
     framework:
