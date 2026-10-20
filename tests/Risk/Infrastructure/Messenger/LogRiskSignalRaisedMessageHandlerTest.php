@@ -6,6 +6,7 @@ use App\Risk\Application\Message\LogRiskSignalRaisedMessage;
 use App\Risk\Domain\ValueObject\RiskOperation;
 use App\Risk\Domain\ValueObject\RiskRuleAction;
 use App\Risk\Infrastructure\Messenger\LogRiskSignalRaisedMessageHandler;
+use App\Tests\Shared\Doubles\InMemoryConsumedMessageStore;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 
@@ -13,7 +14,47 @@ final class LogRiskSignalRaisedMessageHandlerTest extends TestCase
 {
     public function testLogsRiskSignalRaisedMessage(): void
     {
-        $logger = new class extends AbstractLogger {
+        $logger = $this->logger();
+        $handler = new LogRiskSignalRaisedMessageHandler($logger, new InMemoryConsumedMessageStore());
+        $handler($this->message());
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertSame('Risk signal raised', $logger->records[0]['message']);
+        $this->assertSame('01BX5ZZKBKACTAV9WEVGEMMVRY', $logger->records[0]['context']['tenant_id']);
+        $this->assertSame('01CXYZ00000000000000000001', $logger->records[0]['context']['player_id']);
+        $this->assertSame(RiskOperation::Bet->value, $logger->records[0]['context']['operation']);
+        $this->assertSame(RiskRuleAction::Flag->value, $logger->records[0]['context']['action']);
+        $this->assertSame(['01ARZ3NDEKTSV4RRFFQ69G5FAV'], $logger->records[0]['context']['matched_rule_ids']);
+    }
+
+    public function testDoesNotLogTwiceForSameSignal(): void
+    {
+        $logger = $this->logger();
+        $handler = new LogRiskSignalRaisedMessageHandler($logger, new InMemoryConsumedMessageStore());
+        $message = $this->message();
+        $handler($message);
+        $handler($message);
+        $this->assertCount(1, $logger->records);
+    }
+
+    private function message(): LogRiskSignalRaisedMessage
+    {
+        return new LogRiskSignalRaisedMessage(
+            '01BX5ZZKBKACTAV9WEVGEMMVRY',
+            '01CXYZ00000000000000000001',
+            RiskOperation::Bet->value,
+            RiskRuleAction::Flag->value,
+            ['01ARZ3NDEKTSV4RRFFQ69G5FAV'],
+        );
+    }
+
+    /**
+     * @return AbstractLogger&object{records: list<array{level: string, message: string, context: array<string, mixed>}>}
+     */
+    private function logger(): AbstractLogger
+    {
+        return new class extends AbstractLogger {
             /** @var list<array{level: string, message: string, context: array<string, mixed>}> */
             public array $records = [];
 
@@ -26,23 +67,5 @@ final class LogRiskSignalRaisedMessageHandlerTest extends TestCase
                 ];
             }
         };
-
-        $handler = new LogRiskSignalRaisedMessageHandler($logger);
-        $handler(new LogRiskSignalRaisedMessage(
-            '01BX5ZZKBKACTAV9WEVGEMMVRY',
-            '01CXYZ00000000000000000001',
-            RiskOperation::Bet->value,
-            RiskRuleAction::Flag->value,
-            ['01ARZ3NDEKTSV4RRFFQ69G5FAV'],
-        ));
-
-        $this->assertCount(1, $logger->records);
-        $this->assertSame('warning', $logger->records[0]['level']);
-        $this->assertSame('Risk signal raised', $logger->records[0]['message']);
-        $this->assertSame('01BX5ZZKBKACTAV9WEVGEMMVRY', $logger->records[0]['context']['tenant_id']);
-        $this->assertSame('01CXYZ00000000000000000001', $logger->records[0]['context']['player_id']);
-        $this->assertSame(RiskOperation::Bet->value, $logger->records[0]['context']['operation']);
-        $this->assertSame(RiskRuleAction::Flag->value, $logger->records[0]['context']['action']);
-        $this->assertSame(['01ARZ3NDEKTSV4RRFFQ69G5FAV'], $logger->records[0]['context']['matched_rule_ids']);
     }
 }
