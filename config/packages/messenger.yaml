@@ -20,6 +20,7 @@ framework:
         routing:
             App\Betting\Application\Message\LogBetPlacedMessage: async
             App\Risk\Application\Message\LogRiskSignalRaisedMessage: async
+            App\Analytics\Application\Message\RecordBetPlacedAnalyticsMessage: async
 
 when@test:
     framework:

@@ -65,6 +65,7 @@ services:
       - "8124:8123"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./docker/clickhouse/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1" ]
     environment:
