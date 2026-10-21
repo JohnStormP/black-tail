@@ -14,8 +14,15 @@ interface CrashBetRepositoryInterface
 
     public function getById(CrashBetId $id): CrashBet;
 
+    public function getByIdForUpdate(CrashBetId $id): CrashBet;
+
     /**
      * @return list<CrashBet>
      */
     public function findOpenByRoundId(CrashRoundId $roundId): array;
+
+    /**
+     * @return list<CrashBet>
+     */
+    public function findOpenByRoundIdForUpdate(CrashRoundId $roundId): array;
 }

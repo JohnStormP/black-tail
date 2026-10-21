@@ -38,7 +38,7 @@ final class ResolveCrashRoundHandler
 
         $this->transactions->transactional(function () use ($command, $roundId, &$justCrashedPoint): void {
             $round = $this->rounds->getByIdForUpdate($roundId);
-            $openBets = $this->bets->findOpenByRoundId($round->id());
+            $openBets = $this->bets->findOpenByRoundIdForUpdate($round->id());
 
             if (CrashRoundStatus::Crashed === $round->status() && [] === $openBets) {
                 return;

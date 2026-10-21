@@ -8,6 +8,7 @@ use App\Game\Domain\Repository\CrashBetRepositoryInterface;
 use App\Game\Domain\ValueObject\CrashBetId;
 use App\Game\Domain\ValueObject\CrashBetStatus;
 use App\Game\Domain\ValueObject\CrashRoundId;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
@@ -40,6 +41,20 @@ final class DoctrineCrashBetRepository implements CrashBetRepositoryInterface
         return $bet;
     }
 
+    public function getByIdForUpdate(CrashBetId $id): CrashBet
+    {
+        $bet = $this->entityManager->find(
+            CrashBet::class,
+            $id->toString(),
+            LockMode::PESSIMISTIC_WRITE,
+        );
+        if (null === $bet) {
+            throw CrashBetNotFoundException::withId($id);
+        }
+
+        return $bet;
+    }
+
     public function findOpenByRoundId(CrashRoundId $roundId): array
     {
         /** @var list<CrashBet> $bets */
@@ -51,6 +66,23 @@ final class DoctrineCrashBetRepository implements CrashBetRepositoryInterface
             ->setParameter('roundId', $roundId->toString())
             ->setParameter('status', CrashBetStatus::Open)
             ->getQuery()
+            ->getResult();
+
+        return $bets;
+    }
+
+    public function findOpenByRoundIdForUpdate(CrashRoundId $roundId): array
+    {
+        /** @var list<CrashBet> $bets */
+        $bets = $this->entityManager->createQueryBuilder()
+            ->select('b')
+            ->from(CrashBet::class, 'b')
+            ->where('b.roundId = :roundId')
+            ->andWhere('b.status = :status')
+            ->setParameter('roundId', $roundId->toString())
+            ->setParameter('status', CrashBetStatus::Open)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getResult();
 
         return $bets;

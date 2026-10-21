@@ -34,16 +34,17 @@ final class CashOutCrashBetHandler
     {
         $this->transactions->transactional(function () use ($command): void {
             $betId = CrashBetId::fromString($command->betId);
-            $bet = $this->bets->getById($betId);
+            $at = CrashMultiplier::fromHundredths($command->cashOutHundredths);
+
+            $hint = $this->bets->getById($betId);
+            $round = $this->rounds->getByIdForUpdate($hint->roundId());
+            $bet = $this->bets->getByIdForUpdate($betId);
 
             if (CrashBetStatus::CashedOut === $bet->status()) {
                 return;
             }
 
-            $round = $this->rounds->getByIdForUpdate($bet->roundId());
             $wallet = $this->wallets->getByIdForUpdate($bet->walletId());
-            $at = CrashMultiplier::fromHundredths($command->cashOutHundredths);
-
             $bet->cashOut($at, $round);
 
             $stake = $bet->amount();

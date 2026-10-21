@@ -20,6 +20,7 @@ use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class PlaceCrashBetHandler
 {
@@ -84,7 +85,12 @@ final class PlaceCrashBetHandler
             }
 
             $bet = CrashBet::place($betId, $roundId, $playerId, $walletId, $amount);
-            $this->bets->save($bet);
+
+            try {
+                $this->bets->save($bet);
+            } catch (UniqueConstraintViolationException) {
+                return;
+            }
         });
     }
 }
