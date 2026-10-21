@@ -30,6 +30,7 @@ security:
         - { path: ^/api/tenants, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/wallets, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/risk-rules, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/analytics, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:
