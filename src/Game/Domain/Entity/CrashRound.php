@@ -6,14 +6,29 @@ use App\Game\Domain\Exception\InvalidCrashRoundTransitionException;
 use App\Game\Domain\ValueObject\CrashMultiplier;
 use App\Game\Domain\ValueObject\CrashRoundId;
 use App\Game\Domain\ValueObject\CrashRoundStatus;
+use Doctrine\ORM\Mapping as ORM;
 
-final class CrashRound
+#[ORM\Entity]
+#[ORM\Table(name: 'crash_rounds')]
+class CrashRound
 {
+    #[ORM\Id]
+    #[ORM\Column(name: 'id', type: 'string', length: 26)]
     private string $id;
+
+    #[ORM\Column(name: 'status', type: 'string', length: 32, enumType: CrashRoundStatus::class)]
     private CrashRoundStatus $status;
+
+    #[ORM\Column(name: 'crash_point_hundredths', type: 'integer')]
     private int $crashPointHundredths;
+
+    #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
+
+    #[ORM\Column(name: 'started_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
+
+    #[ORM\Column(name: 'crashed_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $crashedAt = null;
 
     private function __construct()
@@ -62,6 +77,11 @@ final class CrashRound
     public function crashedAt(): ?\DateTimeImmutable
     {
         return $this->crashedAt;
+    }
+
+    public function acceptsBets(): bool
+    {
+        return CrashRoundStatus::Waiting === $this->status;
     }
 
     public function start(\DateTimeImmutable $startedAt = new \DateTimeImmutable()): void
