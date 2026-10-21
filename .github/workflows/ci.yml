@@ -48,6 +48,10 @@ jobs:
       CLICKHOUSE_DB: blacktail
       CLICKHOUSE_USER: blacktail
       CLICKHOUSE_PASSWORD: blacktail
+      MERCURE_URL: http://127.0.0.1/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://127.0.0.1/.well-known/mercure
+      MERCURE_JWT_SECRET: "!ChangeThisMercureHubJWTSecretKey!"
+      MERCURE_JWT_ISSUER: https://localhost
 
     steps:
       - uses: actions/checkout@v4

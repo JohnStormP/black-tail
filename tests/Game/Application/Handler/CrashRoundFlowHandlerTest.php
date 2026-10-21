@@ -12,6 +12,7 @@ use App\Game\Application\Handler\OpenCrashRoundHandler;
 use App\Game\Application\Handler\PlaceCrashBetHandler;
 use App\Game\Application\Handler\ResolveCrashRoundHandler;
 use App\Game\Application\Handler\StartCrashRoundHandler;
+use App\Game\Application\Realtime\CrashRealtimePublisherInterface;
 use App\Game\Domain\Entity\CrashBet;
 use App\Game\Domain\Entity\CrashRound;
 use App\Game\Domain\Repository\CrashBetRepositoryInterface;
@@ -104,11 +105,25 @@ final class CrashRoundFlowHandlerTest extends KernelTestCase
         ($openWallet)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
         ($deposit)(new DepositWalletCommand(self::WALLET_ID, self::DEPOSIT_ENTRY_ID, 10_000));
 
+        $noopRealtime = new class implements CrashRealtimePublisherInterface {
+            public function publishStarted(CrashRoundId $roundId): void
+            {
+            }
+
+            public function publishTick(CrashRoundId $roundId, int $hundredths): void
+            {
+            }
+
+            public function publishCrashed(CrashRoundId $roundId, int $crashPointHundredths): void
+            {
+            }
+        };
+
         $this->openRound = new OpenCrashRoundHandler($rounds, new CrashEngine(), new SeededRandomIntGenerator(42));
-        $this->startRound = new StartCrashRoundHandler($rounds, $transactions);
+        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime);
         $this->placeBet = new PlaceCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
         $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
-        $this->resolve = new ResolveCrashRoundHandler($rounds, $bets, $wallets, $ledger, $transactions);
+        $this->resolve = new ResolveCrashRoundHandler($rounds, $bets, $wallets, $ledger, $transactions, $noopRealtime);
     }
 
     public function testOpenAndStartRound(): void

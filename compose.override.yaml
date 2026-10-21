@@ -1,0 +1,9 @@
+services:
+###> symfony/mercure-bundle ###
+  mercure:
+    environment:
+      GLOBAL_OPTIONS: |
+        servers {
+          trusted_proxies static private_ranges
+        }
+###< symfony/mercure-bundle ###
