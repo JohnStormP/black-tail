@@ -52,6 +52,9 @@ jobs:
       MERCURE_PUBLIC_URL: http://127.0.0.1/.well-known/mercure
       MERCURE_JWT_SECRET: "!ChangeThisMercureHubJWTSecretKey!"
       MERCURE_JWT_ISSUER: https://localhost
+      AI_LLM_BASE_URL: ""
+      AI_LLM_API_KEY: ""
+      AI_LLM_MODEL: gpt-4o-mini
 
     steps:
       - uses: actions/checkout@v4
