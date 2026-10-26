@@ -74,4 +74,38 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
         $this->expectException(UnsupportedAnalyticsIntentException::class);
         $handler(new AskAnalyticsQuestionQuery('Show GGR by game'));
     }
+
+    public function testSqlLikeQuestionStillUsesPeriodDatesOnly(): void
+    {
+        $llm = new FakeLlmClient('{"metric":"BETS","group_by":"DAY","period":"TODAY"}');
+        $betsAnalytics = new class implements BetsAnalyticsQueryInterface {
+            public ?string $seenFrom = null;
+            public ?string $seenToExclusive = null;
+
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                $this->seenFrom = $fromInclusive->format('Y-m-d');
+                $this->seenToExclusive = $toExclusive->format('Y-m-d');
+
+                return [new BetsByDayStat('2026-10-21', 1, 10)];
+            }
+        };
+
+        $handler = new AskAnalyticsQuestionHandler(
+            $llm,
+            new AnalyticsIntentParser(),
+            new AnalyticsIntentAllowlist(),
+            new AnalyticsPeriodDateRange(),
+            new GetBetsByDayHandler($betsAnalytics),
+            new BetsByDayAnswerFormatter(),
+            new MockClock('2026-10-21 12:00:00', 'UTC'),
+        );
+
+        $answer = $handler(new AskAnalyticsQuestionQuery('; DROP TABLE bets;--'));
+
+        $this->assertSame('2026-10-21', $betsAnalytics->seenFrom);
+        $this->assertSame('2026-10-22', $betsAnalytics->seenToExclusive);
+        $this->assertStringContainsString('2026-10-21', $answer->text);
+        $this->assertStringNotContainsString('DROP TABLE', $answer->text);
+    }
 }

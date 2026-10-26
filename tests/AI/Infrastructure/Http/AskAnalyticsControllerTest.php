@@ -2,6 +2,7 @@
 
 namespace App\Tests\AI\Infrastructure\Http;
 
+use App\AI\Application\Ask\AskAnalyticsLimits;
 use App\AI\Infrastructure\Llm\FakeLlmClient;
 use App\Analytics\Application\ClickHouse\BetsAnalyticsQueryInterface;
 use App\Analytics\Application\Query\BetsByDayStat;
@@ -25,6 +26,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
 {
     private const string TENANT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
     private const string ADMIN_ID = '01ARZ3NDEKTSV4RRFFQ69G5F30';
+    private const string SUPPORT_ID = '01ARZ3NDEKTSV4RRFFQ69G5F31';
 
     private function seedAdmin(): void
     {
@@ -50,7 +52,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         ));
     }
 
-    private function login(KernelBrowser $client): void
+    private function login(KernelBrowser $client, string $email = 'admin-a@example.com'): void
     {
         $client->request(
             'POST',
@@ -60,7 +62,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
                 'HTTP_ACCEPT' => 'application/json',
             ],
             content: json_encode([
-                'email' => 'admin-a@example.com',
+                'email' => $email,
                 'password' => 'secret-password',
             ], \JSON_THROW_ON_ERROR),
         );
@@ -138,5 +140,82 @@ final class AskAnalyticsControllerTest extends WebTestCase
             content: json_encode(['question' => 'How many bets?'], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(401);
+    }
+
+    public function testAskForbiddenForSupportRole(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $em);
+        $em->createQuery('DELETE FROM '.User::class)->execute();
+        $em->createQuery('DELETE FROM '.Tenant::class)->execute();
+        $tenants = static::getContainer()->get(TenantRepositoryInterface::class);
+        self::assertInstanceOf(TenantRepositoryInterface::class, $tenants);
+        new RegisterTenantHandler($tenants)(new RegisterTenantCommand(self::TENANT_ID, 'Support'));
+        $users = static::getContainer()->get(UserRepositoryInterface::class);
+        self::assertInstanceOf(UserRepositoryInterface::class, $users);
+        $hashers = static::getContainer()->get(PasswordHasherFactoryInterface::class);
+        self::assertInstanceOf(PasswordHasherFactoryInterface::class, $hashers);
+        new RegisterUserHandler($users, $hashers)(new RegisterUserCommand(
+            self::SUPPORT_ID,
+            'support-a@example.com',
+            'secret-password',
+            'support',
+            self::TENANT_ID,
+        ));
+        $this->login($client, 'support-a@example.com');
+        $client->request('POST', '/api/ai/ask', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ],
+            content: json_encode(['question' => 'Show GGR by game'], \JSON_THROW_ON_ERROR),
+        );
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAskRejectsQuestionLongerThanLimit(): void
+    {
+        $client = static::createClient();
+        $this->seedAdmin();
+        $this->login($client);
+        $question = str_repeat('a', AskAnalyticsLimits::MAX_QUESTION_LENGTH + 1);
+        $client->request('POST', '/api/ai/ask', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ],
+            content: json_encode(['question' => $question], \JSON_THROW_ON_ERROR),
+        );
+        $this->assertResponseStatusCodeSame(422);
+    }
+
+    public function testAskDoesNotExecuteSqlFromUserQuestion(): void
+    {
+        $client = static::createClient();
+        $this->seedAdmin();
+        $this->login($client);
+        $client->disableReboot();
+        $stub = new class implements BetsAnalyticsQueryInterface {
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                Assert::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $fromInclusive->format('Y-m-d'));
+                Assert::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $toExclusive->format('Y-m-d'));
+
+                return [new BetsByDayStat('2026-10-20', 1, 10)];
+            }
+        };
+        static::getContainer()->set(BetsAnalyticsQueryInterface::class, $stub);
+        static::getContainer()->set(ClockInterface::class, new MockClock('2026-10-21 12:00:00', 'UTC'));
+        $llm = static::getContainer()->get(FakeLlmClient::class);
+        $this->assertInstanceOf(FakeLlmClient::class, $llm);
+        $llm->respondWith('{"metric":"BETS","group_by":"DAY","period":"LAST_WEEK"}');
+
+        $client->request('POST', '/api/ai/ask', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ],
+            content: json_encode(['question' => '; DROP TABLE bets; SELECT * FROM bets;--'], \JSON_THROW_ON_ERROR),
+        );
+        self::assertResponseStatusCodeSame(200);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+        $this->assertStringContainsString('2026-10-20', $payload['answer']);
+        $this->assertStringNotContainsString('DROP TABLE', $payload['answer']);
     }
 }

@@ -7,6 +7,7 @@ use App\AI\Application\Handler\AskAnalyticsQuestionHandler;
 use App\AI\Domain\Exception\InvalidAnalyticsIntentException;
 use App\AI\Domain\Exception\LlmException;
 use App\AI\Domain\Exception\UnsupportedAnalyticsIntentException;
+use App\AI\Infrastructure\Security\AiAskAccessVoter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -21,7 +22,7 @@ final class AskAnalyticsController
     }
 
     #[Route('/api/ai/ask', name: 'api_ai_ask', methods: ['POST'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted(AiAskAccessVoter::AI_ASK)]
     public function __invoke(#[MapRequestPayload] AskAnalyticsRequest $body): Response
     {
         $question = $body->question;
