@@ -16,4 +16,9 @@ interface TenantRepositoryInterface
      * @throws TenantNotFoundException
      */
     public function getById(TenantId $id): Tenant;
+
+    /**
+     * @return list<Tenant>
+     */
+    public function findAll(): array;
 }

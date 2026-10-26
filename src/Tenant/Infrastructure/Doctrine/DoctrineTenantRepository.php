@@ -47,4 +47,20 @@ final class DoctrineTenantRepository implements TenantRepositoryInterface
 
         return $tenant;
     }
+
+    /**
+     * @return list<Tenant>
+     */
+    public function findAll(): array
+    {
+        /** @var list<Tenant> $tenants */
+        $tenants = $this->entityManager->createQueryBuilder()
+            ->select('t')
+            ->from(Tenant::class, 't')
+            ->orderBy('t.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $tenants;
+    }
 }
