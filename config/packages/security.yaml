@@ -26,9 +26,12 @@ security:
         - { path: ^/health$, roles: PUBLIC_ACCESS }
         - { path: ^/ready$, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/payments/webhooks, roles: PUBLIC_ACCESS }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/tenants, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/wallets, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/bets, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/payments, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/risk-rules, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/analytics, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/ai, roles: IS_AUTHENTICATED_FULLY }
