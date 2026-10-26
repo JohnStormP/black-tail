@@ -119,4 +119,39 @@ final class JsonLoginTest extends WebTestCase
 
         $this->assertResponseStatusCodeSame(401);
     }
+
+    public function testLogoutClearsSession(): void
+    {
+        $client = static::createClient();
+        $this->registerTenantAdmin();
+
+        $client->request(
+            'POST',
+            '/api/login',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+            content: json_encode([
+                'email' => 'admin@example.com',
+                'password' => 'secret-password',
+            ], \JSON_THROW_ON_ERROR),
+        );
+
+        $this->assertResponseStatusCodeSame(200);
+        $client->request(
+            'POST',
+            '/api/logout',
+        );
+        $this->assertResponseStatusCodeSame(204);
+
+        $client->request(
+            'GET',
+            '/api/me',
+            server: [
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+        );
+        $this->assertResponseStatusCodeSame(401);
+    }
 }
