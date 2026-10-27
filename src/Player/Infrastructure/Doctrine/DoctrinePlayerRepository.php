@@ -6,6 +6,7 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Exception\PlayerNotFoundException;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Tenant\Domain\ValueObject\TenantId;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\OptimisticLockException;
@@ -47,5 +48,23 @@ final class DoctrinePlayerRepository implements PlayerRepositoryInterface
         }
 
         return $player;
+    }
+
+    /**
+     * @return list<Player>
+     */
+    public function findByTenantId(TenantId $tenantId): array
+    {
+        /** @var list<Player> $players */
+        $players = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Player::class, 'p')
+            ->where('p.tenantId = :tenantId')
+            ->setParameter('tenantId', $tenantId->toString())
+            ->orderBy('p.email', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $players;
     }
 }

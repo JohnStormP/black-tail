@@ -36,6 +36,7 @@ security:
         - { path: ^/api/payments/webhooks, roles: PUBLIC_ACCESS }
         - { path: ^/api/me, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/tenants, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/players, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/wallets, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/bets, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/payments, roles: IS_AUTHENTICATED_FULLY }
