@@ -56,4 +56,20 @@ final class DoctrineGameRepository implements GameRepositoryInterface
             'code' => $code->toString(),
         ]);
     }
+
+    /**
+     * @return list<Game>
+     */
+    public function findAll(): array
+    {
+        /** @var list<Game> $games */
+        $games = $this->entityManager->createQueryBuilder()
+            ->select('g')
+            ->from(Game::class, 'g')
+            ->orderBy('g.code', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $games;
+    }
 }

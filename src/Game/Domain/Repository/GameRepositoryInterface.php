@@ -19,4 +19,9 @@ interface GameRepositoryInterface
     public function getById(GameId $id): Game;
 
     public function findByCode(GameCode $code): ?Game;
+
+    /**
+     * @return list<Game>
+     */
+    public function findAll(): array;
 }

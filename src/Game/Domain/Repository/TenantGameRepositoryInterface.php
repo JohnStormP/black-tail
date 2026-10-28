@@ -20,4 +20,9 @@ interface TenantGameRepositoryInterface
     public function getById(TenantGameId $id): TenantGame;
 
     public function findByTenantAndGame(TenantId $tenantId, GameId $gameId): ?TenantGame;
+
+    /**
+     * @return list<TenantGame>
+     */
+    public function findByTenantId(TenantId $tenantId): array;
 }

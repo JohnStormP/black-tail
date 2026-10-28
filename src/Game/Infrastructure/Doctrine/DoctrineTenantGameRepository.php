@@ -57,4 +57,22 @@ final class DoctrineTenantGameRepository implements TenantGameRepositoryInterfac
             'gameId' => $gameId->toString(),
         ]);
     }
+
+    /**
+     * @return list<TenantGame>
+     */
+    public function findByTenantId(TenantId $tenantId): array
+    {
+        /** @var list<TenantGame> $links */
+        $links = $this->entityManager->createQueryBuilder()
+            ->select('tg')
+            ->from(TenantGame::class, 'tg')
+            ->where('tg.tenantId = :tenantId')
+            ->setParameter('tenantId', $tenantId->toString())
+            ->orderBy('tg.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $links;
+    }
 }
