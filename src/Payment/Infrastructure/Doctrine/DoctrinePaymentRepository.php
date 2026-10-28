@@ -7,6 +7,8 @@ use App\Payment\Domain\Exception\PaymentNotFoundException;
 use App\Payment\Domain\Repository\PaymentRepositoryInterface;
 use App\Payment\Domain\ValueObject\PaymentId;
 use App\Payment\Domain\ValueObject\PaymentIdempotencyKey;
+use App\Payment\Domain\ValueObject\PaymentType;
+use App\Tenant\Domain\ValueObject\TenantId;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
@@ -83,5 +85,28 @@ final class DoctrinePaymentRepository implements PaymentRepositoryInterface
         }
 
         return $payment;
+    }
+
+    /**
+     * @return list<Payment>
+     */
+    public function findByTenantId(TenantId $tenantId, ?PaymentType $type = null): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.tenantId = :tenantId')
+            ->setParameter('tenantId', $tenantId->toString())
+            ->orderBy('p.createdAt', 'DESC');
+
+        if (null !== $type) {
+            $qb->andWhere('p.type = :type')
+                ->setParameter('type', $type);
+        }
+
+        /** @var list<Payment> $payments */
+        $payments = $qb->getQuery()->getResult();
+
+        return $payments;
     }
 }
