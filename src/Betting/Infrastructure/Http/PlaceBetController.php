@@ -54,7 +54,9 @@ final class PlaceBetController
             $bet = $this->bets->getById(BetId::fromString($body->betId));
         } catch (BetIdempotencyConflictException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_CONFLICT);
-        } catch (InvalidBetException|GameNotPlayableException|PlayerNotFoundException $e) {
+        } catch (PlayerNotFoundException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        } catch (InvalidBetException|GameNotPlayableException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 

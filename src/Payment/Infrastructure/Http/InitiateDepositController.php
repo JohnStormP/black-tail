@@ -53,7 +53,9 @@ final class InitiateDepositController
             $payment = $this->payments->getById(PaymentId::fromString($body->paymentId));
         } catch (PaymentIdempotencyConflictException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_CONFLICT);
-        } catch (InvalidPaymentException|PlayerNotFoundException $e) {
+        } catch (PlayerNotFoundException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        } catch (InvalidPaymentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
