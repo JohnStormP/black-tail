@@ -69,4 +69,9 @@ final class BetsAnalyticsQuerySpy implements BetsAnalyticsQueryInterface
 
         return $this->result;
     }
+
+    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    {
+        Assert::fail('ggrByDay must not be called from GetBetsByDayHandler');
+    }
 }

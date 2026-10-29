@@ -30,6 +30,11 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
             {
                 return [new BetsByDayStat('2026-10-20', 2, 150)];
             }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
+            }
         };
 
         $handler = new AskAnalyticsQuestionHandler(
@@ -58,6 +63,11 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
             public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
             {
                 Assert::fail('ClickHouse must not be called');
+            }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
             }
         };
 
@@ -88,6 +98,11 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
                 $this->seenToExclusive = $toExclusive->format('Y-m-d');
 
                 return [new BetsByDayStat('2026-10-21', 1, 10)];
+            }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
             }
         };
 

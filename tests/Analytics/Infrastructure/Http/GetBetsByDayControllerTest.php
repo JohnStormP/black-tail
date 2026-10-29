@@ -87,6 +87,11 @@ final class GetBetsByDayControllerTest extends WebTestCase
 
                 return $this->stats;
             }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                Assert::fail('Unexpected ggrByDay call for bets-by-day test');
+            }
         };
 
         static::getContainer()->set(

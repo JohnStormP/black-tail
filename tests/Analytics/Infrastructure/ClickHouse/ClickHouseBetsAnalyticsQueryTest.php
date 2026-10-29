@@ -2,7 +2,6 @@
 
 namespace App\Tests\Analytics\Infrastructure\ClickHouse;
 
-use App\Analytics\Application\ClickHouse\ClickHouseClientInterface;
 use App\Analytics\Application\Query\BetsByDayStat;
 use App\Analytics\Infrastructure\ClickHouse\ClickHouseBetsAnalyticsQuery;
 use PHPUnit\Framework\TestCase;
@@ -33,33 +32,5 @@ final class ClickHouseBetsAnalyticsQueryTest extends TestCase
         $this->assertStringContainsString('ORDER BY', $client->lastSql);
         $this->assertStringContainsString('2026-10-20 00:00:00', $client->lastSql);
         $this->assertStringContainsString('2026-10-22 00:00:00', $client->lastSql);
-    }
-}
-
-final class ClickHouseSelectSpy implements ClickHouseClientInterface
-{
-    public ?string $lastSql = null;
-
-    /**
-     * @param list<array<string, mixed>> $rows
-     */
-    public function __construct(
-        private readonly array $rows,
-    ) {
-    }
-
-    public function ping(): void
-    {
-    }
-
-    public function execute(string $sql): void
-    {
-    }
-
-    public function select(string $sql): array
-    {
-        $this->lastSql = $sql;
-
-        return $this->rows;
     }
 }

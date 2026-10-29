@@ -2,7 +2,6 @@
 
 namespace App\Tests\Analytics\Infrastructure\Messenger;
 
-use App\Analytics\Application\ClickHouse\ClickHouseClientInterface;
 use App\Analytics\Application\Message\RecordBetPlacedAnalyticsMessage;
 use App\Analytics\Infrastructure\Messenger\RecordBetPlacedAnalyticsMessageHandler;
 use App\Tests\Shared\Doubles\InMemoryConsumedMessageStore;
@@ -48,25 +47,5 @@ final class RecordBetPlacedAnalyticsMessageHandlerTest extends TestCase
             'USD',
             '2026-10-20T12:00:00+00:00',
         );
-    }
-}
-
-final class ClickHouseExecuteSpy implements ClickHouseClientInterface
-{
-    /** @var list<string> */
-    public array $executed = [];
-
-    public function ping(): void
-    {
-    }
-
-    public function execute(string $sql): void
-    {
-        $this->executed[] = $sql;
-    }
-
-    public function select(string $sql): array
-    {
-        return [];
     }
 }

@@ -25,6 +25,9 @@ final class SetupClickHouseSchemaCommand extends Command
         $this->clickHouse->execute(ClickHouseSchema::BET_EVENTS_DDL);
         $io->success('bet_events table done');
 
+        $this->clickHouse->execute(ClickHouseSchema::BET_SETTLED_EVENTS_DDL);
+        $io->success('bet_settled_events table done');
+
         return Command::SUCCESS;
     }
 }

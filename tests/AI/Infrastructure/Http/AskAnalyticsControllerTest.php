@@ -80,6 +80,11 @@ final class AskAnalyticsControllerTest extends WebTestCase
             {
                 return [new BetsByDayStat('2026-10-20', 2, 150)];
             }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
+            }
         };
         static::getContainer()->set(BetsAnalyticsQueryInterface::class, $stub);
         $clock = new MockClock('2026-10-21 12:00:00', 'UTC');
@@ -109,6 +114,11 @@ final class AskAnalyticsControllerTest extends WebTestCase
             public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
             {
                 Assert::fail('ClickHouse must not be called');
+            }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
             }
         };
         static::getContainer()->set(BetsAnalyticsQueryInterface::class, $stub);
@@ -199,6 +209,11 @@ final class AskAnalyticsControllerTest extends WebTestCase
                 Assert::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $toExclusive->format('Y-m-d'));
 
                 return [new BetsByDayStat('2026-10-20', 1, 10)];
+            }
+
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            {
+                return [];
             }
         };
         static::getContainer()->set(BetsAnalyticsQueryInterface::class, $stub);
