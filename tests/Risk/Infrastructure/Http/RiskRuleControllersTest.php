@@ -157,4 +157,50 @@ final class RiskRuleControllersTest extends WebTestCase
         $client->request('GET', '/api/risk-rules/'.self::RULE_ID, server: ['HTTP_ACCEPT' => 'application/json']);
         self::assertResponseStatusCodeSame(401);
     }
+
+    public function testListRequiresTenantIdAndScopesAccess(): void
+    {
+        $client = static::createClient();
+        $this->seed();
+        $this->login($client, 'admin-a@example.com');
+
+        $client->request(
+            'POST',
+            '/api/risk-rules',
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+            content: json_encode([
+                'ruleId' => self::RULE_ID,
+                'tenantId' => self::TENANT_A,
+                'name' => 'Max bet USD',
+                'type' => RiskRuleType::MaxBet->value,
+                'threshold' => 10_000,
+                'action' => RiskRuleAction::Block->value,
+            ], \JSON_THROW_ON_ERROR),
+        );
+        self::assertResponseStatusCodeSame(201);
+
+        $client->request('GET', '/api/risk-rules', server: ['HTTP_ACCEPT' => 'application/json']);
+        $this->assertResponseStatusCodeSame(400);
+
+        $client->request(
+            'GET',
+            '/api/risk-rules?tenantId='.self::TENANT_A,
+            server: ['HTTP_ACCEPT' => 'application/json'],
+        );
+        $this->assertResponseStatusCodeSame(200);
+        $list = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($list);
+        $ids = array_column($list, 'id');
+        self::assertContains(self::RULE_ID, $ids);
+
+        $client->request(
+            'GET',
+            '/api/risk-rules?tenantId='.self::TENANT_B,
+            server: ['HTTP_ACCEPT' => 'application/json'],
+        );
+        $this->assertResponseStatusCodeSame(403);
+    }
 }

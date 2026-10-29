@@ -64,4 +64,22 @@ final class DoctrineRiskRuleRepository implements RiskRuleRepositoryInterface
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return list<RiskRule>
+     */
+    public function findByTenantId(TenantId $tenantId): array
+    {
+        /** @var list<RiskRule> $rules */
+        $rules = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(RiskRule::class, 'r')
+            ->where('r.tenantId = :tenantId')
+            ->setParameter('tenantId', $tenantId->toString())
+            ->orderBy('r.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        return $rules;
+    }
 }

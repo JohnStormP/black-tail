@@ -44,4 +44,16 @@ final class InMemoryRiskRuleRepository implements RiskRuleRepositoryInterface
 
         return $active;
     }
+
+    public function findByTenantId(TenantId $tenantId): array
+    {
+        $matched = [];
+        foreach ($this->rules as $rule) {
+            if ($rule->tenantId()->equals($tenantId)) {
+                $matched[] = $rule;
+            }
+        }
+
+        return $matched;
+    }
 }

@@ -19,9 +19,12 @@ interface RiskRuleRepositoryInterface
     public function getById(RiskRuleId $id): RiskRule;
 
     /**
-     * Active rules for a tenant, oldest first (stable evaluation order).
-     *
      * @return list<RiskRule>
      */
     public function findActiveByTenant(TenantId $tenantId): array;
+
+    /**
+     * @return list<RiskRule>
+     */
+    public function findByTenantId(TenantId $tenantId): array;
 }
