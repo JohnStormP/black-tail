@@ -2,6 +2,7 @@
 
 namespace App\Wallet\Infrastructure\Doctrine;
 
+use App\Player\Domain\ValueObject\PlayerId;
 use App\Wallet\Domain\Entity\Wallet;
 use App\Wallet\Domain\Exception\WalletNotFoundException;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
@@ -65,5 +66,23 @@ final class DoctrineWalletRepository implements WalletRepositoryInterface
         }
 
         return $wallet;
+    }
+
+    /**
+     * @return list<Wallet>
+     */
+    public function findByPlayerId(PlayerId $playerId): array
+    {
+        /** @var list<Wallet> $wallets */
+        $wallets = $this->entityManager->createQueryBuilder()
+            ->select('w')
+            ->from(Wallet::class, 'w')
+            ->where('w.playerId = :playerId')
+            ->setParameter('playerId', $playerId->toString())
+            ->orderBy('w.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        return $wallets;
     }
 }
