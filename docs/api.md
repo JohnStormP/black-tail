@@ -20,7 +20,7 @@ ULIDs are 26-char Crockford. Money amounts are integer minor units. Currencies: 
 
 | Method | Path | Auth | Body / query | Notes |
 |--------|------|------|--------------|-------|
-| POST | `/api/login` | public | `{ email, password }` | session cookie on success |
+| POST | `/api/login` | public | `{ email, password }` | session cookie on success; **429** after failed-attempt throttle |
 | ANY | `/api/logout` | public | - | JSON 204 |
 | GET | `/api/me` | auth | - | current user |
 
@@ -127,7 +127,7 @@ Risk `action`: `block`, `flag`, `manual_review`.
 
 | Method | Path | Auth | Body / query | Notes |
 |--------|------|------|--------------|-------|
-| POST | `/api/ai/ask` | ai | `{ question }` (max 500) | allowlisted intents only; no raw SQL |
+| POST | `/api/ai/ask` | ai | `{ question }` (max 500) | allowlisted intents only; no raw SQL; **429** when rate limited |
 
 ---
 
@@ -137,4 +137,5 @@ Risk `action`: `block`, `flag`, `manual_review`.
 - Domain / VO errors often **400** (invalid id/format) or **404** (not found).
 - Tenant isolation failures: **403**.
 - Idempotency conflicts: **409** where applicable.
+- Rate limits: **429** (`/api/login` failed attempts; `/api/ai/ask`).
 - Create vs replay: prefer **201** then **200** when the resource already exists with the same payload.

@@ -1,0 +1,7 @@
+framework:
+    rate_limiter:
+        ai_ask:
+            policy: fixed_window
+            limit: '%env(int:AI_ASK_RATE_LIMIT)%'
+            interval: '1 minute'
+            lock_factory: null
