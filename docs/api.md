@@ -29,7 +29,9 @@ ULIDs are 26-char Crockford. Money amounts are integer minor units. Currencies: 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/health` | public | liveness |
-| GET | `/ready` | public | readiness |
+| GET | `/ready` | public | readiness (Postgres `SELECT 1`) |
+
+Every response includes `X-Request-Id` (echoes a valid incoming header, otherwise generated). The same id is attached to Monolog records as `extra.request_id`.
 
 ## Tenants
 
