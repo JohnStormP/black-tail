@@ -31,8 +31,7 @@ final class AskAnalyticsController
     public function __invoke(
         #[MapRequestPayload] AskAnalyticsRequest $body,
         #[CurrentUser] SecurityUser $user,
-    ): Response
-    {
+    ): Response {
         $question = $body->question;
         if ('' === $question) {
             return new JsonResponse(['error' => 'Question must not be blank'], Response::HTTP_UNPROCESSABLE_ENTITY);
