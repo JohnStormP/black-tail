@@ -7,16 +7,22 @@ use App\Game\Domain\Exception\GameNotFoundException;
 use App\Game\Domain\Repository\GameRepositoryInterface;
 use App\Game\Domain\ValueObject\GameCode;
 use App\Game\Domain\ValueObject\GameId;
+use App\Game\Infrastructure\Cache\GameCatalogCache;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\OptimisticLockException;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsAlias(GameRepositoryInterface::class, public: true)]
 final class DoctrineGameRepository implements GameRepositoryInterface
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        #[Autowire(service: 'cache.game_catalog')]
+        private readonly CacheInterface $gameCatalogCache,
     ) {
     }
 
@@ -24,6 +30,17 @@ final class DoctrineGameRepository implements GameRepositoryInterface
     {
         $this->entityManager->persist($game);
         $this->entityManager->flush();
+        $this->deleteCatalogKeys($game->id()->toString());
+    }
+
+    private function deleteCatalogKeys(string $gameId): void
+    {
+        try {
+            $this->gameCatalogCache->delete(GameCatalogCache::LIST_KEY);
+            $this->gameCatalogCache->delete(GameCatalogCache::itemKey($gameId));
+        } catch (InvalidArgumentException $e) {
+            throw new \LogicException('Invalid game catalog cache key while invalidating "'.$gameId.'".', 0, $e);
+        }
     }
 
     /**

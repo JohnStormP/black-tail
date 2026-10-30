@@ -2,7 +2,7 @@
 
 namespace App\Game\Infrastructure\Http;
 
-use App\Game\Domain\Repository\TenantGameRepositoryInterface;
+use App\Game\Infrastructure\Cache\TenantGameListCache;
 use App\Identity\Infrastructure\Security\TenantAccessVoter;
 use App\Tenant\Domain\Exception\InvalidTenantIdException;
 use App\Tenant\Domain\ValueObject\TenantId;
@@ -18,7 +18,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class ListTenantGamesController
 {
     public function __construct(
-        private readonly TenantGameRepositoryInterface $tenantGames,
+        private readonly TenantGameListCache $tenantGames,
         private readonly Security $security,
     ) {
     }
@@ -42,8 +42,6 @@ final class ListTenantGamesController
             throw new AccessDeniedHttpException();
         }
 
-        $items = $this->tenantGames->findByTenantId($tenantId);
-
-        return new JsonResponse(array_map(TenantGameJson::from(...), $items), Response::HTTP_OK);
+        return new JsonResponse($this->tenantGames->listByTenant($tenantId), Response::HTTP_OK);
     }
 }

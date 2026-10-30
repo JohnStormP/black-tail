@@ -2,7 +2,7 @@
 
 namespace App\Game\Infrastructure\Http;
 
-use App\Game\Domain\Repository\GameRepositoryInterface;
+use App\Game\Infrastructure\Cache\GameCatalogCache;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class ListGamesController
 {
     public function __construct(
-        private readonly GameRepositoryInterface $games,
+        private readonly GameCatalogCache $gameCatalog,
     ) {
     }
 
@@ -19,8 +19,6 @@ final class ListGamesController
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function __invoke(): Response
     {
-        $items = $this->games->findAll();
-
-        return new JsonResponse(array_map(GameJson::from(...), $items), Response::HTTP_OK);
+        return new JsonResponse($this->gameCatalog->list(), Response::HTTP_OK);
     }
 }

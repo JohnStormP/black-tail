@@ -154,6 +154,24 @@ final class GameHttpControllersTest extends WebTestCase
             content: $createBody,
         );
         $this->assertResponseStatusCodeSame(409);
+
+        $client->request('GET', '/api/games', server: ['HTTP_ACCEPT' => 'application/json']);
+        $this->assertResponseStatusCodeSame(200);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+        $ids = array_column($payload, 'id');
+        self::assertContains(self::GAME_A, $ids);
+        self::assertContains(self::GAME_NEW, $ids);
+
+        $client->request(
+            'GET',
+            '/api/games/'.self::GAME_NEW,
+            server: ['HTTP_ACCEPT' => 'application/json'],
+        );
+        $this->assertResponseStatusCodeSame(200);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame('Crash', $payload['name']);
+        self::assertSame('crash', $payload['code']);
     }
 
     public function testTenantGamesAssignListEnableDisable(): void
@@ -226,6 +244,17 @@ final class GameHttpControllersTest extends WebTestCase
         self::assertFalse($payload['enabled']);
 
         $client->request(
+            'GET',
+            '/api/tenant-games?tenantId='.self::TENANT_A,
+            server: ['HTTP_ACCEPT' => 'application/json'],
+        );
+        $this->assertResponseStatusCodeSame(200);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+        self::assertCount(1, $payload);
+        self::assertFalse($payload[0]['enabled']);
+
+        $client->request(
             'POST',
             '/api/tenant-games/'.self::TENANT_GAME_NEW.'/enable',
             server: ['HTTP_ACCEPT' => 'application/json'],
@@ -233,5 +262,16 @@ final class GameHttpControllersTest extends WebTestCase
         $this->assertResponseStatusCodeSame(200);
         $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
         self::assertTrue($payload['enabled']);
+
+        $client->request(
+            'GET',
+            '/api/tenant-games?tenantId='.self::TENANT_A,
+            server: ['HTTP_ACCEPT' => 'application/json'],
+        );
+        $this->assertResponseStatusCodeSame(200);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+        self::assertCount(1, $payload);
+        self::assertTrue($payload[0]['enabled']);
     }
 }
