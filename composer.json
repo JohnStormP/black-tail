@@ -72,7 +72,9 @@
             "@auto-scripts"
         ],
         "cs-check": "php-cs-fixer fix --dry-run --diff",
-        "cs-fix": "php-cs-fixer fix"
+        "cs-fix": "php-cs-fixer fix",
+        "phpstan": "phpstan analyse",
+        "lint-container": "bin/console lint:container"
     },
     "conflict": {
         "symfony/symfony": "*"

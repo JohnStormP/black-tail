@@ -76,15 +76,22 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - run: composer install --prefer-dist --no-progress --no-interaction
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Create test database and migrate
         run: |
           php bin/console doctrine:database:create --env=test --if-not-exists
           php bin/console doctrine:migrations:migrate --env=test --no-interaction
 
-      - run: vendor/bin/phpunit
+      - name: PHPUnit
+        run: vendor/bin/phpunit
 
-      - run: vendor/bin/phpstan analyse
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse
 
-      - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: PHP CS Fixer
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Lint Symfony container
+        run: php bin/console lint:container
