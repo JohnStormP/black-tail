@@ -57,6 +57,36 @@ Session cookie is set on success. Use it for authenticated calls; many tenant-sc
 
 `.env` is tuned for PHP **inside** Compose (hosts `postgres`, `redis`, `clickhouse`, …). For PHP on the host (`symfony serve`, host PHPUnit), put `127.0.0.1` overrides in `.env.local` and use ClickHouse port **8124**. Do not commit `.env.local`.
 
+## Architecture
+
+Modular monolith under `src/`. Each module keeps Domain / Application / Infrastructure. Details and Mermaid diagram: [docs/architecture.md](docs/architecture.md).
+
+| Module | Role |
+| --- | --- |
+| Identity | Users, session login/logout, roles |
+| Tenant | Multi-tenant registry and lifecycle |
+| Player | Player accounts scoped to a tenant |
+| Wallet | Balances, ledger, reserve / settle / release |
+| Payment | Deposits and withdrawals (idempotent) |
+| Betting | Place / accept / settle / cancel / refund bets |
+| Game | Catalog, tenant games, Lucky Reels, Crash + Mercure |
+| Bonus | Campaigns, grants, wagering |
+| Risk | Rules and signals |
+| Analytics | Aggregates (GGR, bets by day) via ClickHouse |
+| AI | Natural-language ask over analytics context |
+| Shared | Demo seed, request id, caches, shared infra |
+
+### Flows (short)
+
+1. **Bet accept / settle** - accept reserves wallet funds; settle wins/losses and releases or pays out; domain events feed analytics (and related side effects).
+2. **Payment deposit / withdraw** - payment use-case + idempotency key drives wallet ledger entries; webhooks / fail-stale must not double-apply money.
+3. **Crash cash-out** - Game owns the round and cash-out against the multiplier; wallet settle runs in that path; flights can go out over Mercure.
+4. **AI ask** - rate-limited `/api/ai/ask` builds analytics context, then calls an LLM client (Fake by default for local demo).
+
+`frontend/` is a separate SPA client for this HTTP API on `:8080`.
+
+HTTP API map: [docs/api.md](docs/api.md).
+
 ## Development
 
 Stack must be running (`make up`). Quality commands go through the `php` service:
@@ -72,5 +102,3 @@ make cs-fix            # apply CS fixes
 make check             # test + phpstan + cs + lint:container
 make schema-validate   # Doctrine schema (test env)
 ```
-
-HTTP API map: [docs/api.md](docs/api.md).
