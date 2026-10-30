@@ -3,10 +3,17 @@
 DOCKER_COMPOSE ?= docker compose
 PHP := $(DOCKER_COMPOSE) exec -T php
 
-.PHONY: help test phpstan cs cs-fix check lint-container schema-validate
+.PHONY: help up demo test phpstan cs cs-fix check lint-container schema-validate
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make <target>\n\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+up: ## Build and start the Docker stack
+	$(DOCKER_COMPOSE) up -d --build
+
+demo: ## Run migrations and seed demo data (stack must be up)
+	$(PHP) bin/console doctrine:migrations:migrate --no-interaction
+	$(PHP) bin/console app:demo:seed
 
 test: ## Run PHPUnit
 	$(PHP) vendor/bin/phpunit

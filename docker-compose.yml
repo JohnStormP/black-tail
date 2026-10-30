@@ -46,10 +46,13 @@ services:
       retries: 10
   redis:
     image: redis:7-alpine
-    healthcheck:
-      test: redis-cli ping
     ports:
       - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
@@ -70,6 +73,9 @@ services:
       - ./docker/clickhouse/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     environment:
       CLICKHOUSE_DB: blacktail
       CLICKHOUSE_USER: blacktail
@@ -84,6 +90,7 @@ services:
       - "3000:80"
     environment:
       SERVER_NAME: ':80'
+      # Keep in sync with MERCURE_JWT_SECRET in .env / .env.example
       MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
       MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
       MERCURE_TRUSTED_ISSUERS: 'https://localhost'
