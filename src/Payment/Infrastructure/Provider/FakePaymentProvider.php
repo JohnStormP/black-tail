@@ -22,4 +22,9 @@ final class FakePaymentProvider implements PaymentProviderInterface
 
         return new PaymentProviderResult(PaymentProviderInitiationStatus::Submitted, $providerReference);
     }
+
+    public static function sign(string $rawBody, string $secret): string
+    {
+        return hash_hmac('sha256', $rawBody, $secret);
+    }
 }

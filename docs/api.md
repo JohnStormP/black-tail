@@ -103,7 +103,7 @@ Every response includes `X-Request-Id` (echoes a valid incoming header, otherwis
 | GET | `/api/payments/{paymentId}` | tenant | - | |
 | POST | `/api/payments/deposits` | tenant | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, provider? }` | 201 |
 | POST | `/api/payments/withdrawals` | tenant | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, reserveEntryId, releaseEntryId, provider? }` | 201 / 200 |
-| POST | `/api/payments/webhooks/{provider}` | public | `{ providerReference, outcome, ledgerEntryId, releaseEntryId?, failureReason? }` | provider callback |
+| POST | `/api/payments/webhooks/{provider}` | public | `{ providerReference, outcome, ledgerEntryId, releaseEntryId?, failureReason? }` | provider callback; header **X-Signature** = HMAC-SHA256(raw body, `PAYMENT_WEBHOOK_SECRET`); **401** if missing/invalid |
 
 ## Risk rules
 
