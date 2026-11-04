@@ -226,6 +226,27 @@ final class AcceptBetHandlerTest extends KernelTestCase
         ($this->accept)(new AcceptBetCommand('01PXYZ0000000000000000000C', self::WALLET_ID, self::RESERVE_ENTRY_ID));
     }
 
+    public function testRejectsReuseOfMatchingReserveEntryForSecondBet(): void
+    {
+        $this->seedFundedWallet(1000);
+        $this->placeBet(100);
+        ($this->accept)(new AcceptBetCommand(self::BET_ID, self::WALLET_ID, self::RESERVE_ENTRY_ID));
+
+        $secondBetId = '01PXYZ0000000000000000000D';
+        $this->placeBet(100, $secondBetId, 'place-bet-003');
+
+        try {
+            ($this->accept)(new AcceptBetCommand($secondBetId, self::WALLET_ID, self::RESERVE_ENTRY_ID));
+            $this->fail('Expected LedgerIdempotencyConflictException');
+        } catch (LedgerIdempotencyConflictException) {
+        }
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(100, $wallet->reservedBalance()->amount());
+        $this->assertSame(BetStatus::Pending, $this->bets->getById(BetId::fromString($secondBetId))->status());
+        $this->assertSame(BetStatus::Accepted, $this->bets->getById(BetId::fromString(self::BET_ID))->status());
+    }
+
     private function seedFundedWallet(int $depositMinor): void
     {
         ($this->open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));

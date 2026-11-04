@@ -73,12 +73,12 @@ final class SettleBetHandler
             }
 
             $stake = $bet->amount();
-            $this->settleStake($wallet, $walletId, $settleEntryId, $stake);
+            $this->settleStake($wallet, $settleEntryId, $stake);
 
             if (BetSettlementOutcome::Won === $outcome && $payoutMinor > 0) {
                 $payoutEntryId = LedgerEntryId::fromString((string) $command->payoutEntryId);
                 $payout = Money::of($payoutMinor, $wallet->currency());
-                $this->creditPayout($wallet, $walletId, $payoutEntryId, $payout);
+                $this->creditPayout($wallet, $payoutEntryId, $payout);
             }
 
             if (BetSettlementOutcome::Won === $outcome) {
@@ -106,21 +106,11 @@ final class SettleBetHandler
 
     private function settleStake(
         Wallet $wallet,
-        WalletId $walletId,
         LedgerEntryId $entryId,
         Money $stake,
     ): void {
-        $existing = $this->ledger->findById($entryId);
-        if (null !== $existing) {
-            if (
-                !$existing->walletId()->equals($walletId)
-                || LedgerEntryType::Settle !== $existing->type()
-                || !$existing->amount()->equals($stake)
-            ) {
-                throw LedgerIdempotencyConflictException::forEntry($entryId);
-            }
-
-            return;
+        if (null !== $this->ledger->findById($entryId)) {
+            throw LedgerIdempotencyConflictException::forEntry($entryId);
         }
 
         $wallet->settle($stake);
@@ -136,21 +126,11 @@ final class SettleBetHandler
 
     private function creditPayout(
         Wallet $wallet,
-        WalletId $walletId,
         LedgerEntryId $entryId,
         Money $payout,
     ): void {
-        $existing = $this->ledger->findById($entryId);
-        if (null !== $existing) {
-            if (
-                !$existing->walletId()->equals($walletId)
-                || LedgerEntryType::Credit !== $existing->type()
-                || !$existing->amount()->equals($payout)
-            ) {
-                throw LedgerIdempotencyConflictException::forEntry($entryId);
-            }
-
-            return;
+        if (null !== $this->ledger->findById($entryId)) {
+            throw LedgerIdempotencyConflictException::forEntry($entryId);
         }
 
         $wallet->credit($payout);

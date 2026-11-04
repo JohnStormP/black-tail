@@ -17,7 +17,6 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
-use App\Wallet\Domain\ValueObject\WalletId;
 
 final class ResolveCrashRoundHandler
 {
@@ -59,7 +58,6 @@ final class ResolveCrashRoundHandler
                 $wallet = $this->wallets->getByIdForUpdate($bet->walletId());
                 $this->settleStake(
                     $wallet,
-                    $bet->walletId(),
                     LedgerEntryId::fromString($command->settleEntryIdsByBetId[$betId]),
                     $bet->amount(),
                 );
@@ -76,21 +74,11 @@ final class ResolveCrashRoundHandler
 
     private function settleStake(
         Wallet $wallet,
-        WalletId $walletId,
         LedgerEntryId $entryId,
         Money $stake,
     ): void {
-        $existing = $this->ledger->findById($entryId);
-        if (null !== $existing) {
-            if (
-                !$existing->walletId()->equals($walletId)
-                || LedgerEntryType::Settle !== $existing->type()
-                || !$existing->amount()->equals($stake)
-            ) {
-                throw LedgerIdempotencyConflictException::forEntry($entryId);
-            }
-
-            return;
+        if (null !== $this->ledger->findById($entryId)) {
+            throw LedgerIdempotencyConflictException::forEntry($entryId);
         }
 
         $wallet->settle($stake);

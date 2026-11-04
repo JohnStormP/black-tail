@@ -63,26 +63,19 @@ final class PlaceCrashBetHandler
                 return;
             }
 
-            $existing = $this->ledger->findById($entryId);
-            if (null !== $existing) {
-                if (
-                    !$existing->walletId()->equals($walletId)
-                    || LedgerEntryType::Reserve !== $existing->type()
-                    || !$existing->amount()->equals($amount)
-                ) {
-                    throw LedgerIdempotencyConflictException::forEntry($entryId);
-                }
-            } else {
-                $wallet->reserve($amount);
-                $this->wallets->save($wallet);
-                $this->ledger->save(LedgerEntry::record(
-                    $entryId,
-                    $wallet->id(),
-                    LedgerEntryType::Reserve,
-                    $amount,
-                    $wallet->availableBalance(),
-                ));
+            if (null !== $this->ledger->findById($entryId)) {
+                throw LedgerIdempotencyConflictException::forEntry($entryId);
             }
+
+            $wallet->reserve($amount);
+            $this->wallets->save($wallet);
+            $this->ledger->save(LedgerEntry::record(
+                $entryId,
+                $wallet->id(),
+                LedgerEntryType::Reserve,
+                $amount,
+                $wallet->availableBalance(),
+            ));
 
             $bet = CrashBet::place($betId, $roundId, $playerId, $walletId, $amount);
 

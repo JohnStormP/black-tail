@@ -17,7 +17,6 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
-use App\Wallet\Domain\ValueObject\WalletId;
 
 final class CashOutCrashBetHandler
 {
@@ -50,7 +49,6 @@ final class CashOutCrashBetHandler
             $stake = $bet->amount();
             $this->settleStake(
                 $wallet,
-                $bet->walletId(),
                 LedgerEntryId::fromString($command->settleEntryId),
                 $stake,
             );
@@ -63,7 +61,6 @@ final class CashOutCrashBetHandler
             $payout = Money::of($payoutMinor, $stake->currency());
             $this->creditPayout(
                 $wallet,
-                $bet->walletId(),
                 LedgerEntryId::fromString($command->payoutEntryId),
                 $payout,
             );
@@ -74,21 +71,11 @@ final class CashOutCrashBetHandler
 
     private function settleStake(
         Wallet $wallet,
-        WalletId $walletId,
         LedgerEntryId $entryId,
         Money $stake,
     ): void {
-        $existing = $this->ledger->findById($entryId);
-        if (null !== $existing) {
-            if (
-                !$existing->walletId()->equals($walletId)
-                || LedgerEntryType::Settle !== $existing->type()
-                || !$existing->amount()->equals($stake)
-            ) {
-                throw LedgerIdempotencyConflictException::forEntry($entryId);
-            }
-
-            return;
+        if (null !== $this->ledger->findById($entryId)) {
+            throw LedgerIdempotencyConflictException::forEntry($entryId);
         }
 
         $wallet->settle($stake);
@@ -104,21 +91,11 @@ final class CashOutCrashBetHandler
 
     private function creditPayout(
         Wallet $wallet,
-        WalletId $walletId,
         LedgerEntryId $entryId,
         Money $payout,
     ): void {
-        $existing = $this->ledger->findById($entryId);
-        if (null !== $existing) {
-            if (
-                !$existing->walletId()->equals($walletId)
-                || LedgerEntryType::Credit !== $existing->type()
-                || !$existing->amount()->equals($payout)
-            ) {
-                throw LedgerIdempotencyConflictException::forEntry($entryId);
-            }
-
-            return;
+        if (null !== $this->ledger->findById($entryId)) {
+            throw LedgerIdempotencyConflictException::forEntry($entryId);
         }
 
         $wallet->credit($payout);

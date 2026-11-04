@@ -59,26 +59,19 @@ final class AcceptBetHandler
             }
 
             $money = $bet->amount();
-            $existing = $this->ledger->findById($entryId);
-            if (null !== $existing) {
-                if (
-                    !$existing->walletId()->equals($walletId)
-                    || LedgerEntryType::Reserve !== $existing->type()
-                    || !$existing->amount()->equals($money)
-                ) {
-                    throw LedgerIdempotencyConflictException::forEntry($entryId);
-                }
-            } else {
-                $wallet->reserve($money);
-                $this->wallets->save($wallet);
-                $this->ledger->save(LedgerEntry::record(
-                    $entryId,
-                    $wallet->id(),
-                    LedgerEntryType::Reserve,
-                    $money,
-                    $wallet->availableBalance(),
-                ));
+            if (null !== $this->ledger->findById($entryId)) {
+                throw LedgerIdempotencyConflictException::forEntry($entryId);
             }
+
+            $wallet->reserve($money);
+            $this->wallets->save($wallet);
+            $this->ledger->save(LedgerEntry::record(
+                $entryId,
+                $wallet->id(),
+                LedgerEntryType::Reserve,
+                $money,
+                $wallet->availableBalance(),
+            ));
 
             $bet->accept();
             $this->bets->save($bet);

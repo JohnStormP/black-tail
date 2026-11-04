@@ -36,6 +36,7 @@ use App\Wallet\Application\Handler\DepositWalletHandler;
 use App\Wallet\Application\Handler\OpenWalletHandler;
 use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Entity\Wallet;
+use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
 use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
@@ -272,6 +273,44 @@ final class SettleBetHandlerTest extends KernelTestCase
             self::SETTLE_ENTRY_ID,
             'lost',
         ));
+    }
+
+    public function testRejectsReuseOfSettleEntryIdForSecondBet(): void
+    {
+        $this->seedAcceptedBet(2000, 100);
+        ($this->settle)(new SettleBetCommand(
+            self::BET_ID,
+            self::WALLET_ID,
+            self::SETTLE_ENTRY_ID,
+            'lost',
+        ));
+
+        $secondBetId = '01PXYZ0000000000000000000E';
+        $secondReserveId = '01MXYZ00000000000000000019';
+        ($this->place)(new PlaceBetCommand(
+            $secondBetId,
+            self::PLAYER_ID,
+            self::GAME_ID,
+            self::ROUND_ID,
+            100,
+            'USD',
+            'place-bet-002',
+        ));
+        ($this->accept)(new AcceptBetCommand($secondBetId, self::WALLET_ID, $secondReserveId));
+
+        try {
+            ($this->settle)(new SettleBetCommand(
+                $secondBetId,
+                self::WALLET_ID,
+                self::SETTLE_ENTRY_ID,
+                'lost',
+            ));
+            $this->fail('Expected LedgerIdempotencyConflictException');
+        } catch (LedgerIdempotencyConflictException) {
+        }
+
+        $this->assertSame(BetStatus::Lost, $this->bets->getById(BetId::fromString(self::BET_ID))->status());
+        $this->assertSame(BetStatus::Accepted, $this->bets->getById(BetId::fromString($secondBetId))->status());
     }
 
     private function seedAcceptedBet(int $depositMinor, int $betMinor): void
