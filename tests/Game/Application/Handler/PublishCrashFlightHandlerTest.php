@@ -57,7 +57,7 @@ final class PublishCrashFlightHandlerTest extends KernelTestCase
         };
 
         $open = new OpenCrashRoundHandler($rounds, new CrashEngine(), new SeededRandomIntGenerator(42));
-        $start = new StartCrashRoundHandler($rounds, $transactions, $realtime);
+        $start = new StartCrashRoundHandler($rounds, $transactions, $realtime, new \Symfony\Component\Clock\MockClock());
         ($open)(new OpenCrashRoundCommand(self::ROUND_ID));
         ($start)(new StartCrashRoundCommand(self::ROUND_ID));
 

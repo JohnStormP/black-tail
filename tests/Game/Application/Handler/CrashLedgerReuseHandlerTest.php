@@ -38,6 +38,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class CrashLedgerReuseHandlerTest extends KernelTestCase
 {
@@ -58,8 +59,8 @@ final class CrashLedgerReuseHandlerTest extends KernelTestCase
     private PlaceCrashBetHandler $placeBet;
     private CashOutCrashBetHandler $cashOut;
     private CrashBetRepositoryInterface $bets;
-    private CrashRoundRepositoryInterface $rounds;
     private WalletRepositoryInterface $wallets;
+    private MockClock $clock;
 
     protected function setUp(): void
     {
@@ -75,7 +76,6 @@ final class CrashLedgerReuseHandlerTest extends KernelTestCase
 
         $rounds = self::getContainer()->get(CrashRoundRepositoryInterface::class);
         self::assertInstanceOf(CrashRoundRepositoryInterface::class, $rounds);
-        $this->rounds = $rounds;
 
         $bets = self::getContainer()->get(CrashBetRepositoryInterface::class);
         self::assertInstanceOf(CrashBetRepositoryInterface::class, $bets);
@@ -118,10 +118,11 @@ final class CrashLedgerReuseHandlerTest extends KernelTestCase
             }
         };
 
+        $this->clock = new MockClock('2026-10-21 12:00:00.000000');
         $this->openRound = new OpenCrashRoundHandler($rounds, new CrashEngine(), new SeededRandomIntGenerator(42));
-        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime);
+        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime, $this->clock);
         $this->placeBet = new PlaceCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
-        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
+        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions, $this->clock);
     }
 
     public function testSecondPlaceWithSameReserveEntryIdConflicts(): void
@@ -179,14 +180,10 @@ final class CrashLedgerReuseHandlerTest extends KernelTestCase
         ));
         ($this->startRound)(new StartCrashRoundCommand(self::ROUND_ID));
 
-        $round = $this->rounds->getById(CrashRoundId::fromString(self::ROUND_ID));
-        $cashOutAt = min(150, $round->crashPoint()->toHundredths() - 1);
-
         ($this->cashOut)(new CashOutCrashBetCommand(
             self::BET_A,
             self::SETTLE_ENTRY_ID,
             self::PAYOUT_ENTRY_ID,
-            $cashOutAt,
         ));
 
         try {
@@ -194,7 +191,6 @@ final class CrashLedgerReuseHandlerTest extends KernelTestCase
                 self::BET_B,
                 self::SETTLE_ENTRY_ID,
                 self::PAYOUT_ENTRY_ID,
-                $cashOutAt,
             ));
             $this->fail('Expected LedgerIdempotencyConflictException');
         } catch (LedgerIdempotencyConflictException) {

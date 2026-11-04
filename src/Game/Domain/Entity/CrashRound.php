@@ -3,6 +3,7 @@
 namespace App\Game\Domain\Entity;
 
 use App\Game\Domain\Exception\InvalidCrashRoundTransitionException;
+use App\Game\Domain\Service\CrashFlightCurve;
 use App\Game\Domain\ValueObject\CrashMultiplier;
 use App\Game\Domain\ValueObject\CrashRoundId;
 use App\Game\Domain\ValueObject\CrashRoundStatus;
@@ -25,10 +26,10 @@ class CrashRound
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(name: 'started_at', type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(name: 'started_at', type: 'datetime_immutable_micro', nullable: true)]
     private ?\DateTimeImmutable $startedAt = null;
 
-    #[ORM\Column(name: 'crashed_at', type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(name: 'crashed_at', type: 'datetime_immutable_micro', nullable: true)]
     private ?\DateTimeImmutable $crashedAt = null;
 
     private function __construct()
@@ -111,5 +112,22 @@ class CrashRound
         }
 
         return $at->isStrictlyBelow($this->crashPoint());
+    }
+
+    public function currentMultiplierAt(\DateTimeImmutable $now): CrashMultiplier
+    {
+        if (CrashRoundStatus::Running !== $this->status) {
+            throw InvalidCrashRoundTransitionException::roundNotRunning($this->id, $this->status);
+        }
+
+        if (null === $this->startedAt) {
+            throw InvalidCrashRoundTransitionException::roundMissingStartedAt($this->id);
+        }
+
+        $nowMs = $now->getTimestamp() * 1000 + (int) $now->format('v');
+        $startedMs = $this->startedAt->getTimestamp() * 1000 + (int) $this->startedAt->format('v');
+        $elapsedMs = (int) max(0, $nowMs - $startedMs);
+
+        return CrashFlightCurve::atElapsedMs($elapsedMs, $this->crashPoint());
     }
 }

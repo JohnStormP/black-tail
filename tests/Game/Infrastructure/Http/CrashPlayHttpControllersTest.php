@@ -5,7 +5,6 @@ namespace App\Tests\Game\Infrastructure\Http;
 use App\Game\Application\Realtime\CrashRealtimePublisherInterface;
 use App\Game\Domain\Entity\CrashBet;
 use App\Game\Domain\Entity\CrashRound;
-use App\Game\Domain\Repository\CrashRoundRepositoryInterface;
 use App\Game\Domain\ValueObject\CrashRoundId;
 use App\Identity\Application\Command\RegisterUserCommand;
 use App\Identity\Application\Handler\RegisterUserHandler;
@@ -236,16 +235,10 @@ final class CrashPlayHttpControllersTest extends WebTestCase
         $this->assertSame('running', $payload['status']);
         $this->assertArrayNotHasKey('crashPointHundredths', $payload);
 
-        $rounds = static::getContainer()->get(CrashRoundRepositoryInterface::class);
-        self::assertInstanceOf(CrashRoundRepositoryInterface::class, $rounds);
-        $round = $rounds->getById(CrashRoundId::fromString(self::ROUND_ID));
-        $cashOutAt = max(100, min(150, $round->crashPoint()->toHundredths() - 1));
-
         $this->login($client, 'admin-a@example.com');
         $cashOutBody = json_encode([
             'settleEntryId' => self::SETTLE_ENTRY_ID,
             'payoutEntryId' => self::PAYOUT_ENTRY_ID,
-            'cashOutHundredths' => $cashOutAt,
         ], \JSON_THROW_ON_ERROR);
 
         $client->request(

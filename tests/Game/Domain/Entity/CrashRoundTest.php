@@ -87,6 +87,30 @@ final class CrashRoundTest extends TestCase
         $this->assertFalse($round->isCashOutAllowed(CrashMultiplier::fromHundredths(150)));
     }
 
+    public function testCurrentMultiplierAtUsesElapsedTime(): void
+    {
+        $round = $this->openRound(CrashMultiplier::fromHundredths(200));
+        $startedAt = new \DateTimeImmutable('2026-10-21 12:00:00.000');
+        $round->start($startedAt);
+
+        $atStart = $round->currentMultiplierAt($startedAt);
+        $this->assertSame(100, $atStart->toHundredths());
+
+        $laterTs = (float) $startedAt->format('U.u') + 0.5;
+        $later = \DateTimeImmutable::createFromFormat('U.u', sprintf('%.6F', $laterTs));
+        self::assertInstanceOf(\DateTimeImmutable::class, $later);
+        $atLater = $round->currentMultiplierAt($later);
+        $this->assertSame(110, $atLater->toHundredths());
+    }
+
+    public function testCurrentMultiplierAtRejectsWhenNotRunning(): void
+    {
+        $round = $this->openRound();
+
+        $this->expectException(InvalidCrashRoundTransitionException::class);
+        $round->currentMultiplierAt(new \DateTimeImmutable());
+    }
+
     private function openRound(?CrashMultiplier $point = null): CrashRound
     {
         return CrashRound::open(

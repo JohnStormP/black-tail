@@ -10,6 +10,7 @@ use App\Game\Domain\Exception\InvalidCrashBetException;
 use App\Game\Domain\Exception\InvalidCrashBetIdException;
 use App\Game\Domain\Exception\InvalidCrashBetTransitionException;
 use App\Game\Domain\Exception\InvalidCrashMultiplierException;
+use App\Game\Domain\Exception\InvalidCrashRoundTransitionException;
 use App\Game\Domain\Repository\CrashBetRepositoryInterface;
 use App\Game\Domain\ValueObject\CrashBetId;
 use App\Game\Domain\ValueObject\CrashBetStatus;
@@ -62,9 +63,8 @@ final class CashOutCrashBetController
                 $id->toString(),
                 $body->settleEntryId,
                 $body->payoutEntryId,
-                $body->cashOutHundredths,
             ));
-        } catch (InvalidCrashBetException|InvalidCrashBetTransitionException|InvalidCrashMultiplierException $e) {
+        } catch (InvalidCrashBetException|InvalidCrashBetTransitionException|InvalidCrashMultiplierException|InvalidCrashRoundTransitionException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         } catch (CrashRoundNotFoundException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);

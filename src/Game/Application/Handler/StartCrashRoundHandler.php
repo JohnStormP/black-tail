@@ -7,6 +7,7 @@ use App\Game\Application\Realtime\CrashRealtimePublisherInterface;
 use App\Game\Domain\Repository\CrashRoundRepositoryInterface;
 use App\Game\Domain\ValueObject\CrashRoundId;
 use App\Shared\Application\TransactionManagerInterface;
+use Psr\Clock\ClockInterface;
 
 final class StartCrashRoundHandler
 {
@@ -14,6 +15,7 @@ final class StartCrashRoundHandler
         private readonly CrashRoundRepositoryInterface $rounds,
         private readonly TransactionManagerInterface $transactions,
         private readonly CrashRealtimePublisherInterface $realtime,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -23,7 +25,7 @@ final class StartCrashRoundHandler
 
         $this->transactions->transactional(function () use ($roundId): void {
             $round = $this->rounds->getByIdForUpdate($roundId);
-            $round->start();
+            $round->start($this->clock->now());
             $this->rounds->save($round);
         });
 

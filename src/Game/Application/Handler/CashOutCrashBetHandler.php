@@ -7,7 +7,6 @@ use App\Game\Domain\Repository\CrashBetRepositoryInterface;
 use App\Game\Domain\Repository\CrashRoundRepositoryInterface;
 use App\Game\Domain\ValueObject\CrashBetId;
 use App\Game\Domain\ValueObject\CrashBetStatus;
-use App\Game\Domain\ValueObject\CrashMultiplier;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Entity\Wallet;
@@ -17,6 +16,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
+use Psr\Clock\ClockInterface;
 
 final class CashOutCrashBetHandler
 {
@@ -26,6 +26,7 @@ final class CashOutCrashBetHandler
         private readonly WalletRepositoryInterface $wallets,
         private readonly LedgerEntryRepositoryInterface $ledger,
         private readonly TransactionManagerInterface $transactions,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -33,7 +34,6 @@ final class CashOutCrashBetHandler
     {
         $this->transactions->transactional(function () use ($command): void {
             $betId = CrashBetId::fromString($command->betId);
-            $at = CrashMultiplier::fromHundredths($command->cashOutHundredths);
 
             $hint = $this->bets->getById($betId);
             $round = $this->rounds->getByIdForUpdate($hint->roundId());
@@ -43,6 +43,7 @@ final class CashOutCrashBetHandler
                 return;
             }
 
+            $at = $round->currentMultiplierAt($this->clock->now());
             $wallet = $this->wallets->getByIdForUpdate($bet->walletId());
             $bet->cashOut($at, $round);
 

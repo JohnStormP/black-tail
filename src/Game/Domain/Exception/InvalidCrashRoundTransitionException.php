@@ -13,4 +13,16 @@ final class InvalidCrashRoundTransitionException extends DomainException
             'Cannot transition crash round from "'.$from->value.'" to "'.$to->value.'"'
         );
     }
+
+    public static function roundNotRunning(string $roundId, CrashRoundStatus $status): self
+    {
+        return new self(
+            'Crash round "'.$roundId.'" must be running to read flight multiplier, current status "'.$status->value.'"'
+        );
+    }
+
+    public static function roundMissingStartedAt(string $roundId): self
+    {
+        return new self('Crash round "'.$roundId.'" is running but started_at is missing');
+    }
 }

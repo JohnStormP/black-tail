@@ -40,6 +40,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class CrashRoundFlowHandlerTest extends KernelTestCase
 {
@@ -61,6 +62,7 @@ final class CrashRoundFlowHandlerTest extends KernelTestCase
     private CrashRoundRepositoryInterface $rounds;
     private CrashBetRepositoryInterface $bets;
     private WalletRepositoryInterface $wallets;
+    private MockClock $clock;
 
     protected function setUp(): void
     {
@@ -119,10 +121,11 @@ final class CrashRoundFlowHandlerTest extends KernelTestCase
             }
         };
 
+        $this->clock = new MockClock('2026-10-21 12:00:00.000000');
         $this->openRound = new OpenCrashRoundHandler($rounds, new CrashEngine(), new SeededRandomIntGenerator(42));
-        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime);
+        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime, $this->clock);
         $this->placeBet = new PlaceCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
-        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
+        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions, $this->clock);
         $this->resolve = new ResolveCrashRoundHandler($rounds, $bets, $wallets, $ledger, $transactions, $noopRealtime);
     }
 
@@ -171,20 +174,18 @@ final class CrashRoundFlowHandlerTest extends KernelTestCase
         ));
         ($this->startRound)(new StartCrashRoundCommand(self::ROUND_ID));
 
-        $round = $this->rounds->getById(CrashRoundId::fromString(self::ROUND_ID));
-        $cashOutAt = min(150, $round->crashPoint()->toHundredths() - 1);
         ($this->cashOut)(new CashOutCrashBetCommand(
             self::BET_ID,
             self::SETTLE_ENTRY_ID,
             self::PAYOUT_ENTRY_ID,
-            $cashOutAt
         ));
         $bet = $this->bets->getById(CrashBetId::fromString(self::BET_ID));
         $this->assertSame(CrashBetStatus::CashedOut, $bet->status());
-        $this->assertSame(intdiv(500 * $cashOutAt, 100), $bet->payoutMinor());
+        $this->assertSame(100, $bet->cashOutMultiplier()?->toHundredths());
+        $this->assertSame(500, $bet->payoutMinor());
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
         $this->assertSame(0, $wallet->reservedBalance()->amount());
-        $this->assertSame(10_000 - 500 + (int) $bet->payoutMinor(), $wallet->availableBalance()->amount());
+        $this->assertSame(10_000, $wallet->availableBalance()->amount());
     }
 
     public function testResolveCrashMarksOpenBetLost(): void

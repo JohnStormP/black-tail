@@ -37,6 +37,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class CrashConcurrencyHandlerTest extends KernelTestCase
 {
@@ -55,8 +56,8 @@ final class CrashConcurrencyHandlerTest extends KernelTestCase
     private OpenCrashRoundHandler $openRound;
     private StartCrashRoundHandler $startRound;
     private CrashBetRepositoryInterface $bets;
-    private CrashRoundRepositoryInterface $rounds;
     private WalletRepositoryInterface $wallets;
+    private MockClock $clock;
 
     protected function setUp(): void
     {
@@ -72,7 +73,6 @@ final class CrashConcurrencyHandlerTest extends KernelTestCase
 
         $rounds = self::getContainer()->get(CrashRoundRepositoryInterface::class);
         self::assertInstanceOf(CrashRoundRepositoryInterface::class, $rounds);
-        $this->rounds = $rounds;
 
         $bets = self::getContainer()->get(CrashBetRepositoryInterface::class);
         self::assertInstanceOf(CrashBetRepositoryInterface::class, $bets);
@@ -115,10 +115,11 @@ final class CrashConcurrencyHandlerTest extends KernelTestCase
             }
         };
 
+        $this->clock = new MockClock('2026-10-21 12:00:00.000000');
         $this->openRound = new OpenCrashRoundHandler($rounds, new CrashEngine(), new SeededRandomIntGenerator(42));
-        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime);
+        $this->startRound = new StartCrashRoundHandler($rounds, $transactions, $noopRealtime, $this->clock);
         $this->placeBet = new PlaceCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
-        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions);
+        $this->cashOut = new CashOutCrashBetHandler($rounds, $bets, $wallets, $ledger, $transactions, $this->clock);
     }
 
     public function testPlaceSameBetTwiceIsIdempotent(): void
@@ -158,13 +159,10 @@ final class CrashConcurrencyHandlerTest extends KernelTestCase
         ));
         ($this->startRound)(new StartCrashRoundCommand(self::ROUND_ID));
 
-        $round = $this->rounds->getById(CrashRoundId::fromString(self::ROUND_ID));
-        $cashOutAt = min(150, $round->crashPoint()->toHundredths() - 1);
         $command = new CashOutCrashBetCommand(
             self::BET_ID,
             self::SETTLE_ENTRY_ID,
             self::PAYOUT_ENTRY_ID,
-            $cashOutAt,
         );
 
         ($this->cashOut)($command);
@@ -172,9 +170,9 @@ final class CrashConcurrencyHandlerTest extends KernelTestCase
         $bet = $this->bets->getById(CrashBetId::fromString(self::BET_ID));
         $payoutMinor = $bet->payoutMinor();
         $this->assertSame(CrashBetStatus::CashedOut, $bet->status());
-        $this->assertSame(intdiv(500 * $cashOutAt, 100), $payoutMinor);
+        $this->assertSame(500, $payoutMinor);
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
-        $this->assertSame(10_000 - 500 + $payoutMinor, $wallet->availableBalance()->amount());
+        $this->assertSame(10_000, $wallet->availableBalance()->amount());
         $this->assertSame(0, $wallet->reservedBalance()->amount());
     }
 }
