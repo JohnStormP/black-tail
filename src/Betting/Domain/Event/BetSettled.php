@@ -6,6 +6,7 @@ use App\Betting\Domain\ValueObject\BetId;
 use App\Betting\Domain\ValueObject\BetSettlementOutcome;
 use App\Player\Domain\ValueObject\PlayerId;
 use App\Shared\Domain\Event\DomainEvent;
+use App\Tenant\Domain\ValueObject\TenantId;
 use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
 
@@ -18,6 +19,7 @@ final readonly class BetSettled implements DomainEvent
         private BetSettlementOutcome $outcome,
         private Money $stake,
         private int $payoutMinor,
+        private TenantId $tenantId,
         private \DateTimeImmutable $occurredAt = new \DateTimeImmutable(),
     ) {
     }
@@ -30,6 +32,11 @@ final readonly class BetSettled implements DomainEvent
     public function playerId(): PlayerId
     {
         return $this->playerId;
+    }
+
+    public function tenantId(): TenantId
+    {
+        return $this->tenantId;
     }
 
     public function walletId(): WalletId

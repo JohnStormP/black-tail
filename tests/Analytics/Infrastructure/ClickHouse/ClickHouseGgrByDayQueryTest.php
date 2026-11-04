@@ -17,7 +17,7 @@ final class ClickHouseGgrByDayQueryTest extends TestCase
         $from = new \DateTimeImmutable('2026-10-20 00:00:00');
         $to = new \DateTimeImmutable('2026-10-22 00:00:00');
 
-        $stats = $query->ggrByDay($from, $to);
+        $stats = $query->ggrByDay($from, $to, '01EXYZ00000000000000000099');
 
         $this->assertEquals([
             new GgrByDayStat('2026-10-20', 300, 100, 200),
@@ -31,5 +31,6 @@ final class ClickHouseGgrByDayQueryTest extends TestCase
         $this->assertStringContainsString('ORDER BY', $client->lastSql);
         $this->assertStringContainsString('2026-10-20 00:00:00', $client->lastSql);
         $this->assertStringContainsString('2026-10-22 00:00:00', $client->lastSql);
+        $this->assertStringContainsString('01EXYZ00000000000000000099', $client->lastSql);
     }
 }

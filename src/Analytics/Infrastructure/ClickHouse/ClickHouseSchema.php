@@ -8,6 +8,7 @@ final class ClickHouseSchema
     public const string BET_EVENTS_DDL = <<<'CH'
 CREATE TABLE IF NOT EXISTS bet_events
 (
+    tenant_id String,
     bet_id String,
     player_id String,
     game_id String,
@@ -17,13 +18,14 @@ CREATE TABLE IF NOT EXISTS bet_events
     occurred_at DateTime64(3, 'UTC')
 )
 ENGINE = MergeTree
-ORDER BY (toDate(occurred_at), bet_id)
+ORDER BY (tenant_id, toDate(occurred_at), bet_id)
 CH;
 
     public const string BET_SETTLED_EVENTS_TABLE = 'bet_settled_events';
     public const string BET_SETTLED_EVENTS_DDL = <<<'CH'
 CREATE TABLE IF NOT EXISTS bet_settled_events
 (
+    tenant_id String,
     bet_id String,
     player_id String,
     outcome LowCardinality(String),
@@ -33,6 +35,6 @@ CREATE TABLE IF NOT EXISTS bet_settled_events
     occurred_at DateTime64(3, 'UTC')
 )
 ENGINE = MergeTree
-ORDER BY (toDate(occurred_at), bet_id)
+ORDER BY (tenant_id, toDate(occurred_at), bet_id)
 CH;
 }

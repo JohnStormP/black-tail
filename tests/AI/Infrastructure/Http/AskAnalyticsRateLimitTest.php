@@ -89,12 +89,12 @@ final class AskAnalyticsRateLimitTest extends WebTestCase
             $client->disableReboot();
 
             $stub = new class implements BetsAnalyticsQueryInterface {
-                public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+                public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
                 {
                     return [new BetsByDayStat('2026-10-20', 1, 10)];
                 }
 
-                public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+                public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
                 {
                     return [];
                 }
@@ -109,7 +109,7 @@ final class AskAnalyticsRateLimitTest extends WebTestCase
                 $client->request('POST', '/api/ai/ask', server: [
                     'CONTENT_TYPE' => 'application/json',
                     'HTTP_ACCEPT' => 'application/json',
-                ], content: json_encode(['question' => 'How many bets last week?'], \JSON_THROW_ON_ERROR));
+                ], content: json_encode(['question' => 'How many bets last week?', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR));
                 self::assertResponseStatusCodeSame(200);
                 $llm->respondWith('{"metric":"BETS","group_by":"DAY","period":"LAST_WEEK"}');
             }
@@ -117,7 +117,7 @@ final class AskAnalyticsRateLimitTest extends WebTestCase
             $client->request('POST', '/api/ai/ask', server: [
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_ACCEPT' => 'application/json',
-            ], content: json_encode(['question' => 'How many bets last week?'], \JSON_THROW_ON_ERROR));
+            ], content: json_encode(['question' => 'How many bets last week?', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR));
 
             $this->assertResponseStatusCodeSame(429);
             $this->clearRateLimiterCache();

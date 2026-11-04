@@ -9,6 +9,7 @@ final readonly class AskAnalyticsQuestionQuery
      */
     public function __construct(
         public string $question,
+        public string $tenantId,
     ) {
     }
 }

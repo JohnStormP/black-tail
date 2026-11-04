@@ -11,6 +11,7 @@ final readonly class GetBetsByDayQuery
     public function __construct(
         public string $fromDate,
         public string $toDate,
+        public string $tenantId,
     ) {
     }
 }

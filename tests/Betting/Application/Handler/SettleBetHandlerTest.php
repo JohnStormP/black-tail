@@ -138,7 +138,7 @@ final class SettleBetHandlerTest extends KernelTestCase
 
         $this->place = new PlaceBetHandler($this->bets, $players, $games, $tenantGames, new EventDispatcher(), $risk);
         $this->accept = new AcceptBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, new EventDispatcher());
-        $this->settle = new SettleBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, $dispatcher);
+        $this->settle = new SettleBetHandler($this->bets, $this->wallets, $this->ledger, $transactions, $dispatcher, $players);
         $this->open = new OpenWalletHandler($this->wallets);
         $this->deposit = new DepositWalletHandler($this->wallets, $this->ledger, $transactions);
     }

@@ -18,6 +18,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Assert;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 final class GetGgrByDayControllerTest extends WebTestCase
@@ -79,12 +80,12 @@ final class GetGgrByDayControllerTest extends WebTestCase
             {
             }
 
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 Assert::fail('Unexpected betsByDay call for ggr-by-day test');
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 if ([] === $this->stats) {
                     Assert::fail('Unexpected ClickHouse call for this test case');
@@ -94,9 +95,11 @@ final class GetGgrByDayControllerTest extends WebTestCase
             }
         };
 
+        $security = static::getContainer()->get(Security::class);
+        self::assertInstanceOf(Security::class, $security);
         static::getContainer()->set(
             GetGgrByDayController::class,
-            new GetGgrByDayController(new GetGgrByDayHandler($spy)),
+            new GetGgrByDayController(new GetGgrByDayHandler($spy), $security),
         );
     }
 
@@ -111,7 +114,7 @@ final class GetGgrByDayControllerTest extends WebTestCase
 
         $client->request(
             'GET',
-            '/api/analytics/ggr-by-day?from=2026-10-20&to=2026-10-21',
+            '/api/analytics/ggr-by-day?from=2026-10-20&to=2026-10-21&tenantId='.self::TENANT_ID,
             server: ['HTTP_ACCEPT' => 'application/json'],
         );
 
@@ -139,7 +142,7 @@ final class GetGgrByDayControllerTest extends WebTestCase
         $this->stubAnalytics($client);
         $client->request(
             'GET',
-            '/api/analytics/ggr-by-day?from=2026-10-22&to=2026-10-20',
+            '/api/analytics/ggr-by-day?from=2026-10-22&to=2026-10-20&tenantId='.self::TENANT_ID,
             server: ['HTTP_ACCEPT' => 'application/json'],
         );
         $this->assertResponseStatusCodeSame(400);
@@ -153,7 +156,10 @@ final class GetGgrByDayControllerTest extends WebTestCase
     public function testRequiresAuthentication(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/api/analytics/ggr-by-day?from=2026-10-20&to=2026-10-21');
+        $client->request(
+            'GET',
+            '/api/analytics/ggr-by-day?from=2026-10-20&to=2026-10-21&tenantId='.self::TENANT_ID,
+        );
         $this->assertResponseStatusCodeSame(401);
     }
 }

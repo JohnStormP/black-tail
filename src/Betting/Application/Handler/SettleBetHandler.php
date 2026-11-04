@@ -10,6 +10,7 @@ use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
 use App\Betting\Domain\ValueObject\BetSettlementOutcome;
 use App\Betting\Domain\ValueObject\BetStatus;
+use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Domain\Entity\LedgerEntry;
 use App\Wallet\Domain\Entity\Wallet;
@@ -30,6 +31,7 @@ final class SettleBetHandler
         private readonly LedgerEntryRepositoryInterface $ledger,
         private readonly TransactionManagerInterface $transactions,
         private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly PlayerRepositoryInterface $players,
     ) {
     }
 
@@ -89,6 +91,7 @@ final class SettleBetHandler
 
             $this->bets->save($bet);
 
+            $player = $this->players->getById($bet->playerId());
             $event = new BetSettled(
                 $betId,
                 $bet->playerId(),
@@ -96,6 +99,7 @@ final class SettleBetHandler
                 $outcome,
                 $stake,
                 $payoutMinor,
+                $player->tenantId(),
             );
         });
 

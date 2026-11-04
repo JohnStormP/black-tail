@@ -12,6 +12,7 @@ final readonly class RecordBetSettledAnalyticsMessage
         public int $payoutMinor,
         public string $currency,
         public string $occurredAt,
+        public string $tenantId,
     ) {
     }
 }

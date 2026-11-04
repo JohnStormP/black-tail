@@ -38,7 +38,7 @@ final class AskAnalyticsQuestionHandler
         $periodDates = $this->periodDates->toInclusiveYmd($intent->period, $this->clock->now());
         $from = $periodDates['from'];
         $to = $periodDates['to'];
-        $stats = ($this->getBetsByDay)(new GetBetsByDayQuery($from, $to));
+        $stats = ($this->getBetsByDay)(new GetBetsByDayQuery($from, $to, $query->tenantId));
         $text = $this->answerFormatter->format($from, $to, $stats);
 
         return new AskAnalyticsAnswer($text, $intent);

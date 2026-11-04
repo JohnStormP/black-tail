@@ -29,6 +29,7 @@ final class DispatchRecordBetSettledAnalyticsMessageListener
             $event->payoutMinor(),
             $event->stake()->currency()->value,
             $event->occurredAt()->format(\DateTimeInterface::ATOM),
+            $event->tenantId()->toString(),
         );
         $this->bus->dispatch($message);
     }

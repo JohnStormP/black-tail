@@ -29,6 +29,7 @@ final class DispatchRecordBetPlacedAnalyticsMessageListener
             $event->amount()->amount(),
             $event->amount()->currency()->value,
             $event->occurredAt()->format(\DateTime::ATOM),
+            $event->tenantId()->toString(),
         );
         $this->bus->dispatch($message);
     }

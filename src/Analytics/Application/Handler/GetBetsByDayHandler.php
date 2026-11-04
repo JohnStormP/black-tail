@@ -35,6 +35,6 @@ final class GetBetsByDayHandler
 
         $toExclusive = $to->add(new \DateInterval('P1D'));
 
-        return $this->betsAnalytics->betsByDay($from, $toExclusive);
+        return $this->betsAnalytics->betsByDay($from, $toExclusive, $query->tenantId);
     }
 }

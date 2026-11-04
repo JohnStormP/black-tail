@@ -22,6 +22,8 @@ final class RecordBetPlacedAnalyticsMessageHandlerTest extends TestCase
         $this->assertStringContainsString('INSERT INTO bet_events', $clickHouse->executed[0]);
         $this->assertStringContainsString('FORMAT JSONEachRow', $clickHouse->executed[0]);
         $this->assertStringContainsString('01ARZ3NDEKTSV4RRFFQ69G5FAV', $clickHouse->executed[0]);
+        $this->assertStringContainsString('tenant_id', $clickHouse->executed[0]);
+        $this->assertStringContainsString('01EXYZ00000000000000000099', $clickHouse->executed[0]);
     }
 
     public function testSkipsWhenAlreadyClaimed(): void
@@ -46,6 +48,7 @@ final class RecordBetPlacedAnalyticsMessageHandlerTest extends TestCase
             100,
             'USD',
             '2026-10-20T12:00:00+00:00',
+            '01EXYZ00000000000000000099',
         );
     }
 }

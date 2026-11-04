@@ -26,12 +26,12 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
     {
         $llm = new FakeLlmClient('{"metric":"BETS","group_by":"DAY","period":"LAST_WEEK"}');
         $betsAnalytics = new class implements BetsAnalyticsQueryInterface {
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [new BetsByDayStat('2026-10-20', 2, 150)];
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -47,7 +47,7 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
             new MockClock('2026-10-21 12:00:00', 'UTC'),
         );
 
-        $answer = $handler(new AskAnalyticsQuestionQuery('How many bets last week?'));
+        $answer = $handler(new AskAnalyticsQuestionQuery('How many bets last week?', '01EXYZ00000000000000000099'));
 
         $this->assertSame(AnalyticsMetric::Bets, $answer->intent->metric);
         $this->assertSame(AnalyticsGroupBy::Day, $answer->intent->groupBy);
@@ -60,12 +60,12 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
     {
         $llm = new FakeLlmClient('{"metric":"GGR","group_by":"GAME","period":"TODAY"}');
         $betsAnalytics = new class implements BetsAnalyticsQueryInterface {
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 Assert::fail('ClickHouse must not be called');
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -82,7 +82,7 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
         );
 
         $this->expectException(UnsupportedAnalyticsIntentException::class);
-        $handler(new AskAnalyticsQuestionQuery('Show GGR by game'));
+        $handler(new AskAnalyticsQuestionQuery('Show GGR by game', '01EXYZ00000000000000000099'));
     }
 
     public function testSqlLikeQuestionStillUsesPeriodDatesOnly(): void
@@ -91,16 +91,18 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
         $betsAnalytics = new class implements BetsAnalyticsQueryInterface {
             public ?string $seenFrom = null;
             public ?string $seenToExclusive = null;
+            public ?string $seenTenantId = null;
 
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 $this->seenFrom = $fromInclusive->format('Y-m-d');
                 $this->seenToExclusive = $toExclusive->format('Y-m-d');
+                $this->seenTenantId = $tenantId;
 
                 return [new BetsByDayStat('2026-10-21', 1, 10)];
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -116,10 +118,11 @@ final class AskAnalyticsQuestionHandlerTest extends TestCase
             new MockClock('2026-10-21 12:00:00', 'UTC'),
         );
 
-        $answer = $handler(new AskAnalyticsQuestionQuery('; DROP TABLE bets;--'));
+        $answer = $handler(new AskAnalyticsQuestionQuery('; DROP TABLE bets;--', '01EXYZ00000000000000000099'));
 
         $this->assertSame('2026-10-21', $betsAnalytics->seenFrom);
         $this->assertSame('2026-10-22', $betsAnalytics->seenToExclusive);
+        $this->assertSame('01EXYZ00000000000000000099', $betsAnalytics->seenTenantId);
         $this->assertStringContainsString('2026-10-21', $answer->text);
         $this->assertStringNotContainsString('DROP TABLE', $answer->text);
     }

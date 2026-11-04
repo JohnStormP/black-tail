@@ -122,14 +122,14 @@ Risk `action`: `block`, `flag`, `manual_review`.
 
 | Method | Path | Auth | Body / query | Notes |
 |--------|------|------|--------------|-------|
-| GET | `/api/analytics/bets-by-day` | auth | `?from=Y-m-d&to=Y-m-d` | ClickHouse |
-| GET | `/api/analytics/ggr-by-day` | auth | `?from=Y-m-d&to=Y-m-d` | stake − payout |
+| GET | `/api/analytics/bets-by-day` | tenant | `?from=Y-m-d&to=Y-m-d&tenantId=` | ClickHouse; **403** cross-tenant |
+| GET | `/api/analytics/ggr-by-day` | tenant | `?from=Y-m-d&to=Y-m-d&tenantId=` | stake − payout; **403** cross-tenant |
 
 ## AI
 
 | Method | Path | Auth | Body / query | Notes |
 |--------|------|------|--------------|-------|
-| POST | `/api/ai/ask` | ai | `{ question }` (max 500) | allowlisted intents only; no raw SQL; **429** when rate limited |
+| POST | `/api/ai/ask` | ai | `{ question, tenantId }` (question max 500) | allowlisted intents; scoped to tenant; **403** cross-tenant; **429** when rate limited |
 
 ---
 

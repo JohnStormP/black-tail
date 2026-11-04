@@ -38,6 +38,7 @@ final class DispatchRecordBetSettledAnalyticsMessageListenerTest extends TestCas
             BetSettlementOutcome::Won,
             Money::of(100, Currency::Usd),
             250,
+            \App\Tenant\Domain\ValueObject\TenantId::fromString('01EXYZ00000000000000000099'),
         ));
 
         $this->assertInstanceOf(RecordBetSettledAnalyticsMessage::class, $bus->dispatched);
@@ -47,5 +48,6 @@ final class DispatchRecordBetSettledAnalyticsMessageListenerTest extends TestCas
         $this->assertSame(100, $bus->dispatched->stakeMinor);
         $this->assertSame(250, $bus->dispatched->payoutMinor);
         $this->assertSame('USD', $bus->dispatched->currency);
+        $this->assertSame('01EXYZ00000000000000000099', $bus->dispatched->tenantId);
     }
 }

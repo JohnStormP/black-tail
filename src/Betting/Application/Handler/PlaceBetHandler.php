@@ -93,7 +93,8 @@ final class PlaceBetHandler
         } catch (UniqueConstraintViolationException) {
             return;
         }
-        $this->eventDispatcher->dispatch(new BetPlaced($betId, $playerId, $gameId, $roundId, $amount));
+
+        $this->eventDispatcher->dispatch(new BetPlaced($betId, $playerId, $gameId, $roundId, $amount, $tenantId));
     }
 
     private function matchesRequest(

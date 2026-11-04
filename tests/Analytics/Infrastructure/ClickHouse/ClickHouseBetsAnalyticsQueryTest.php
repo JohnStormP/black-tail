@@ -18,7 +18,7 @@ final class ClickHouseBetsAnalyticsQueryTest extends TestCase
         $from = new \DateTimeImmutable('2026-10-20 00:00:00');
         $to = new \DateTimeImmutable('2026-10-22 00:00:00');
 
-        $stats = $query->betsByDay($from, $to);
+        $stats = $query->betsByDay($from, $to, '01EXYZ00000000000000000099');
 
         $this->assertEquals([
             new BetsByDayStat('2026-10-20', 2, 150),
@@ -32,5 +32,6 @@ final class ClickHouseBetsAnalyticsQueryTest extends TestCase
         $this->assertStringContainsString('ORDER BY', $client->lastSql);
         $this->assertStringContainsString('2026-10-20 00:00:00', $client->lastSql);
         $this->assertStringContainsString('2026-10-22 00:00:00', $client->lastSql);
+        $this->assertStringContainsString('01EXYZ00000000000000000099', $client->lastSql);
     }
 }

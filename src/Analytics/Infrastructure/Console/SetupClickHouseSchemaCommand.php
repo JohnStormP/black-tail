@@ -22,6 +22,10 @@ final class SetupClickHouseSchemaCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        $this->clickHouse->execute('DROP TABLE IF EXISTS '.ClickHouseSchema::BET_EVENTS_TABLE);
+        $this->clickHouse->execute('DROP TABLE IF EXISTS '.ClickHouseSchema::BET_SETTLED_EVENTS_TABLE);
+
         $this->clickHouse->execute(ClickHouseSchema::BET_EVENTS_DDL);
         $io->success('bet_events table done');
 

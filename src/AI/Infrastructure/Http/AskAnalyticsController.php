@@ -9,11 +9,16 @@ use App\AI\Domain\Exception\LlmException;
 use App\AI\Domain\Exception\UnsupportedAnalyticsIntentException;
 use App\AI\Infrastructure\Security\AiAskAccessVoter;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\TenantAccessVoter;
+use App\Tenant\Domain\Exception\InvalidTenantIdException;
+use App\Tenant\Domain\ValueObject\TenantId;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -22,6 +27,7 @@ final class AskAnalyticsController
 {
     public function __construct(
         private readonly AskAnalyticsQuestionHandler $ask,
+        private readonly Security $security,
     ) {
     }
 
@@ -38,7 +44,17 @@ final class AskAnalyticsController
         }
 
         try {
-            $answer = ($this->ask)(new AskAnalyticsQuestionQuery($question));
+            $tenantId = TenantId::fromString($body->tenantId);
+        } catch (InvalidTenantIdException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (!$this->security->isGranted(TenantAccessVoter::TENANT_ACCESS, $tenantId)) {
+            throw new AccessDeniedHttpException();
+        }
+
+        try {
+            $answer = ($this->ask)(new AskAnalyticsQuestionQuery($question, $tenantId->toString()));
         } catch (UnsupportedAnalyticsIntentException|InvalidAnalyticsIntentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (LlmException $e) {

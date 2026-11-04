@@ -29,6 +29,7 @@ final class RecordBetSettledAnalyticsMessageHandler
         }
 
         $row = json_encode([
+            'tenant_id' => $message->tenantId,
             'bet_id' => $message->betId,
             'player_id' => $message->playerId,
             'outcome' => $message->outcome,

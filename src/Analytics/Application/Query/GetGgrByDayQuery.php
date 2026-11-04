@@ -11,6 +11,7 @@ final readonly class GetGgrByDayQuery
     public function __construct(
         public string $fromDate,
         public string $toDate,
+        public string $tenantId,
     ) {
     }
 }

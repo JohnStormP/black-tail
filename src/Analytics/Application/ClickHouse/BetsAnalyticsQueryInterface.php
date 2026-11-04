@@ -13,7 +13,7 @@ interface BetsAnalyticsQueryInterface
      *
      * @throws ClickHouseException
      */
-    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array;
+    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array;
 
     /**
      * Gross Gaming Revenue by day: sum(stake_minor) - sum(payout_minor) from settled bets.
@@ -22,5 +22,5 @@ interface BetsAnalyticsQueryInterface
      *
      * @throws ClickHouseException
      */
-    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array;
+    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array;
 }

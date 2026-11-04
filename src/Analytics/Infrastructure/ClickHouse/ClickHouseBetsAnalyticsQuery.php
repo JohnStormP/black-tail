@@ -17,7 +17,7 @@ final class ClickHouseBetsAnalyticsQuery implements BetsAnalyticsQueryInterface
     ) {
     }
 
-    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         $from = $fromInclusive->format('Y-m-d H:i:s');
         $to = $toExclusive->format('Y-m-d H:i:s');
@@ -29,7 +29,7 @@ SELECT
     count() AS bets_count,
     sum(amount_minor) AS amount_minor
 FROM {$table}
-WHERE occurred_at >= '$from' AND occurred_at < '$to'
+WHERE occurred_at >= '$from' AND occurred_at < '$to' AND tenant_id = '$tenantId'
 GROUP BY day
 ORDER BY day
 CH;
@@ -63,7 +63,7 @@ CH;
         return $stats;
     }
 
-    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         $from = $fromInclusive->format('Y-m-d H:i:s');
         $to = $toExclusive->format('Y-m-d H:i:s');
@@ -75,7 +75,7 @@ SELECT
     sum(payout_minor) AS payout_minor,
     sum(stake_minor) - sum(payout_minor) AS ggr_minor
 FROM {$table}
-WHERE occurred_at >= '$from' AND occurred_at < '$to'
+WHERE occurred_at >= '$from' AND occurred_at < '$to' AND tenant_id = '$tenantId'
 GROUP BY day
 ORDER BY day
 CH;

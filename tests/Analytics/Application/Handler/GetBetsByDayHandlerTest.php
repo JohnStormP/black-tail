@@ -18,7 +18,7 @@ final class GetBetsByDayHandlerTest extends TestCase
             new BetsByDayStat('2026-10-20', 2, 150),
         ]);
         $handler = new GetBetsByDayHandler($analytics);
-        $stats = ($handler)(new GetBetsByDayQuery('2026-10-20', '2026-10-21'));
+        $stats = ($handler)(new GetBetsByDayQuery('2026-10-20', '2026-10-21', '01EXYZ00000000000000000099'));
 
         $this->assertEquals([
             new BetsByDayStat('2026-10-20', 2, 150),
@@ -33,7 +33,7 @@ final class GetBetsByDayHandlerTest extends TestCase
         $handler = new GetBetsByDayHandler(new BetsAnalyticsQuerySpy());
 
         $this->expectException(InvalidAnalyticsPeriodException::class);
-        ($handler)(new GetBetsByDayQuery('not-a-date', '2026-10-21'));
+        ($handler)(new GetBetsByDayQuery('not-a-date', '2026-10-21', '01EXYZ00000000000000000099'));
     }
 
     public function testRejectsInvertedRange(): void
@@ -41,7 +41,7 @@ final class GetBetsByDayHandlerTest extends TestCase
         $handler = new GetBetsByDayHandler(new BetsAnalyticsQuerySpy());
 
         $this->expectException(InvalidAnalyticsPeriodException::class);
-        ($handler)(new GetBetsByDayQuery('2026-10-22', '2026-10-20'));
+        ($handler)(new GetBetsByDayQuery('2026-10-22', '2026-10-20', '01EXYZ00000000000000000099'));
     }
 }
 
@@ -58,7 +58,7 @@ final class BetsAnalyticsQuerySpy implements BetsAnalyticsQueryInterface
     ) {
     }
 
-    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         if ([] === $this->result) {
             Assert::fail('ClickHouse query must not be called for invalid input');
@@ -70,7 +70,7 @@ final class BetsAnalyticsQuerySpy implements BetsAnalyticsQueryInterface
         return $this->result;
     }
 
-    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         Assert::fail('ggrByDay must not be called from GetBetsByDayHandler');
     }

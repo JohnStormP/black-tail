@@ -37,6 +37,7 @@ final class DispatchRecordBetPlacedAnalyticsMessageListenerTest extends TestCase
             GameId::fromString('01CXYZ00000000000000000001'),
             GameRoundId::fromString('01DXYZ00000000000000000002'),
             Money::of(100, Currency::Usd),
+            \App\Tenant\Domain\ValueObject\TenantId::fromString('01EXYZ00000000000000000099'),
         ));
         $this->assertInstanceOf(RecordBetPlacedAnalyticsMessage::class, $bus->dispatched);
         $this->assertSame('01ARZ3NDEKTSV4RRFFQ69G5FAV', $bus->dispatched->betId);
@@ -45,5 +46,6 @@ final class DispatchRecordBetPlacedAnalyticsMessageListenerTest extends TestCase
         $this->assertSame('01DXYZ00000000000000000002', $bus->dispatched->roundId);
         $this->assertSame(100, $bus->dispatched->amountMinor);
         $this->assertSame('USD', $bus->dispatched->currency);
+        $this->assertSame('01EXYZ00000000000000000099', $bus->dispatched->tenantId);
     }
 }

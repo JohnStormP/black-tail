@@ -37,6 +37,7 @@ final class DispatchLogBetPlacedMessageListenerTest extends TestCase
             GameId::fromString('01CXYZ00000000000000000001'),
             GameRoundId::fromString('01DXYZ00000000000000000002'),
             Money::of(100, Currency::Usd),
+            \App\Tenant\Domain\ValueObject\TenantId::fromString('01EXYZ00000000000000000099'),
         ));
 
         $this->assertInstanceOf(LogBetPlacedMessage::class, $bus->dispatched);

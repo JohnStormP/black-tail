@@ -76,12 +76,12 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $this->login($client);
         $client->disableReboot();
         $stub = new class implements BetsAnalyticsQueryInterface {
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [new BetsByDayStat('2026-10-20', 2, 150)];
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -96,7 +96,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $client->request('POST', '/api/ai/ask', server: [
             'CONTENT_TYPE' => 'application/json',
         ],
-            content: json_encode(['question' => 'How many bets last week?'], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => 'How many bets last week?', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         self::assertResponseStatusCodeSame(200);
         $response = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
@@ -111,12 +111,12 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $this->login($client);
         $client->disableReboot();
         $stub = new class implements BetsAnalyticsQueryInterface {
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 Assert::fail('ClickHouse must not be called');
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -128,7 +128,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $client->request('POST', '/api/ai/ask', server: [
             'CONTENT_TYPE' => 'application/json',
         ],
-            content: json_encode(['question' => 'Show GGR by game'], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => 'Show GGR by game', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(422);
         $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
@@ -147,7 +147,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
                 'CONTENT_TYPE' => 'application/json',
                 'HTTP_ACCEPT' => 'application/json',
             ],
-            content: json_encode(['question' => 'How many bets?'], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => 'How many bets?', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(401);
     }
@@ -177,7 +177,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $client->request('POST', '/api/ai/ask', server: [
             'CONTENT_TYPE' => 'application/json',
         ],
-            content: json_encode(['question' => 'Show GGR by game'], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => 'Show GGR by game', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(403);
     }
@@ -191,7 +191,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $client->request('POST', '/api/ai/ask', server: [
             'CONTENT_TYPE' => 'application/json',
         ],
-            content: json_encode(['question' => $question], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => $question, 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(422);
     }
@@ -203,7 +203,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $this->login($client);
         $client->disableReboot();
         $stub = new class implements BetsAnalyticsQueryInterface {
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 Assert::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $fromInclusive->format('Y-m-d'));
                 Assert::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $toExclusive->format('Y-m-d'));
@@ -211,7 +211,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
                 return [new BetsByDayStat('2026-10-20', 1, 10)];
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 return [];
             }
@@ -225,7 +225,7 @@ final class AskAnalyticsControllerTest extends WebTestCase
         $client->request('POST', '/api/ai/ask', server: [
             'CONTENT_TYPE' => 'application/json',
         ],
-            content: json_encode(['question' => '; DROP TABLE bets; SELECT * FROM bets;--'], \JSON_THROW_ON_ERROR),
+            content: json_encode(['question' => '; DROP TABLE bets; SELECT * FROM bets;--', 'tenantId' => self::TENANT_ID], \JSON_THROW_ON_ERROR),
         );
         self::assertResponseStatusCodeSame(200);
         $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);

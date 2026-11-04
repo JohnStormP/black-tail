@@ -18,7 +18,7 @@ final class GetGgrByDayHandlerTest extends TestCase
             new GgrByDayStat('2026-10-20', 300, 100, 200),
         ]);
         $handler = new GetGgrByDayHandler($analytics);
-        $stats = ($handler)(new GetGgrByDayQuery('2026-10-20', '2026-10-21'));
+        $stats = ($handler)(new GetGgrByDayQuery('2026-10-20', '2026-10-21', '01EXYZ00000000000000000099'));
 
         $this->assertEquals([
             new GgrByDayStat('2026-10-20', 300, 100, 200),
@@ -33,7 +33,7 @@ final class GetGgrByDayHandlerTest extends TestCase
         $handler = new GetGgrByDayHandler(new GgrAnalyticsQuerySpy());
 
         $this->expectException(InvalidAnalyticsPeriodException::class);
-        ($handler)(new GetGgrByDayQuery('2026-10-22', '2026-10-20'));
+        ($handler)(new GetGgrByDayQuery('2026-10-22', '2026-10-20', '01EXYZ00000000000000000099'));
     }
 }
 
@@ -50,12 +50,12 @@ final class GgrAnalyticsQuerySpy implements BetsAnalyticsQueryInterface
     ) {
     }
 
-    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         Assert::fail('betsByDay must not be called from GetGgrByDayHandler');
     }
 
-    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+    public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
     {
         if ([] === $this->result) {
             Assert::fail('ClickHouse query must not be called for invalid input');

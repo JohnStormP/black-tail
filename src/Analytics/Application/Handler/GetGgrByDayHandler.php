@@ -35,6 +35,6 @@ final class GetGgrByDayHandler
 
         $toExclusive = $to->add(new \DateInterval('P1D'));
 
-        return $this->betsAnalytics->ggrByDay($from, $toExclusive);
+        return $this->betsAnalytics->ggrByDay($from, $toExclusive, $query->tenantId);
     }
 }

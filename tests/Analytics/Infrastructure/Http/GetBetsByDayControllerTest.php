@@ -18,6 +18,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Assert;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 final class GetBetsByDayControllerTest extends WebTestCase
@@ -79,7 +80,7 @@ final class GetBetsByDayControllerTest extends WebTestCase
             {
             }
 
-            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function betsByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 if ([] === $this->stats) {
                     Assert::fail('Unexpected ClickHouse call for this test case');
@@ -88,15 +89,17 @@ final class GetBetsByDayControllerTest extends WebTestCase
                 return $this->stats;
             }
 
-            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive): array
+            public function ggrByDay(\DateTimeImmutable $fromInclusive, \DateTimeImmutable $toExclusive, string $tenantId): array
             {
                 Assert::fail('Unexpected ggrByDay call for bets-by-day test');
             }
         };
 
+        $security = static::getContainer()->get(Security::class);
+        self::assertInstanceOf(Security::class, $security);
         static::getContainer()->set(
             GetBetsByDayController::class,
-            new GetBetsByDayController(new GetBetsByDayHandler($spy)),
+            new GetBetsByDayController(new GetBetsByDayHandler($spy), $security),
         );
     }
 
@@ -111,7 +114,7 @@ final class GetBetsByDayControllerTest extends WebTestCase
 
         $client->request(
             'GET',
-            '/api/analytics/bets-by-day?from=2026-10-20&to=2026-10-21',
+            '/api/analytics/bets-by-day?from=2026-10-20&to=2026-10-21&tenantId='.self::TENANT_ID,
             server: ['HTTP_ACCEPT' => 'application/json'],
         );
 
@@ -138,7 +141,7 @@ final class GetBetsByDayControllerTest extends WebTestCase
         $this->stubAnalytics($client);
         $client->request(
             'GET',
-            '/api/analytics/bets-by-day?from=2026-10-22&to=2026-10-20',
+            '/api/analytics/bets-by-day?from=2026-10-22&to=2026-10-20&tenantId='.self::TENANT_ID,
             server: ['HTTP_ACCEPT' => 'application/json'],
         );
         $this->assertResponseStatusCodeSame(400);
@@ -152,7 +155,10 @@ final class GetBetsByDayControllerTest extends WebTestCase
     public function testRequiresAuthentication(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/api/analytics/bets-by-day?from=2026-10-20&to=2026-10-21');
+        $client->request(
+            'GET',
+            '/api/analytics/bets-by-day?from=2026-10-20&to=2026-10-21&tenantId='.self::TENANT_ID,
+        );
         $this->assertResponseStatusCodeSame(401);
     }
 }

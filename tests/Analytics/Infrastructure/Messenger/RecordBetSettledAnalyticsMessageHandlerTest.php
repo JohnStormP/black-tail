@@ -25,6 +25,8 @@ final class RecordBetSettledAnalyticsMessageHandlerTest extends TestCase
         $this->assertStringContainsString('"outcome":"won"', $clickHouse->executed[0]);
         $this->assertStringContainsString('"stake_minor":100', $clickHouse->executed[0]);
         $this->assertStringContainsString('"payout_minor":250', $clickHouse->executed[0]);
+        $this->assertStringContainsString('tenant_id', $clickHouse->executed[0]);
+        $this->assertStringContainsString('01EXYZ00000000000000000099', $clickHouse->executed[0]);
     }
 
     public function testSkipsWhenAlreadyClaimed(): void
@@ -49,6 +51,7 @@ final class RecordBetSettledAnalyticsMessageHandlerTest extends TestCase
             250,
             'USD',
             '2026-10-20T12:00:00+00:00',
+            '01EXYZ00000000000000000099',
         );
     }
 }
