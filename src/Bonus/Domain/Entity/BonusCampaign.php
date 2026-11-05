@@ -13,6 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'bonus_campaigns')]
+#[ORM\Index(name: 'idx_bonus_campaigns_tenant_id', columns: ['tenant_id'])]
 class BonusCampaign
 {
     #[ORM\Id]

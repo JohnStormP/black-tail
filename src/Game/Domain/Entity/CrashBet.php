@@ -16,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'crash_bets')]
+#[ORM\Index(name: 'idx_crash_bets_round_status', columns: ['round_id', 'status'])]
 class CrashBet
 {
     #[ORM\Id]

@@ -18,6 +18,15 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Table(name: 'payments')]
 #[ORM\UniqueConstraint(name: 'uniq_payments_idempotency_key', columns: ['idempotency_key'])]
+#[ORM\UniqueConstraint(
+    name: 'uniq_payments_provider_reference',
+    columns: ['provider', 'provider_reference'],
+    options: ['where' => '(provider_reference IS NOT NULL)'],
+)]
+#[ORM\Index(name: 'idx_payments_tenant_id', columns: ['tenant_id'])]
+#[ORM\Index(name: 'idx_payments_player_id', columns: ['player_id'])]
+#[ORM\Index(name: 'idx_payments_wallet_id', columns: ['wallet_id'])]
+#[ORM\Index(name: 'idx_payments_player_type_created_at', columns: ['player_id', 'type', 'created_at'])]
 class Payment
 {
     #[ORM\Id]

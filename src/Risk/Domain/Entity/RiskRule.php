@@ -13,6 +13,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'risk_rules')]
+#[ORM\Index(name: 'idx_risk_rules_tenant_id', columns: ['tenant_id'])]
+#[ORM\Index(name: 'idx_risk_rules_tenant_status', columns: ['tenant_id', 'status'])]
 class RiskRule
 {
     #[ORM\Id]

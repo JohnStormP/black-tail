@@ -18,3 +18,7 @@ services:
         exclude:
             - '../src/Kernel.php'
             - '../src/*/Domain/{Entity,ValueObject,Event,Exception}'
+
+    App\Shared\Infrastructure\Doctrine\Schema\MicrosecondAwareSchemaManagerFactory:
+        arguments:
+            $inner: '@doctrine.dbal.default_schema_manager_factory'

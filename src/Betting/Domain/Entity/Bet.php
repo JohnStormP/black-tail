@@ -17,6 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Table(name: 'bets')]
 #[ORM\UniqueConstraint(name: 'uniq_bets_idempotency_key', columns: ['idempotency_key'])]
+#[ORM\Index(name: 'idx_bets_player_created_at', columns: ['player_id', 'created_at'])]
 class Bet
 {
     #[ORM\Id]
