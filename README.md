@@ -29,7 +29,7 @@ Prerequisites: Docker and Docker Compose.
 ```bash
 cp .env.example .env   # if .env is missing
 make up                # build + start stack
-make demo              # migrations + app:demo:seed
+make demo              # migrations + ClickHouse schema + app:demo:seed
 ```
 
 | Service | URL / port |
@@ -44,9 +44,10 @@ make demo              # migrations + app:demo:seed
 
 Demo login (from `app:demo:seed` / `DemoSeedIds`):
 
-- email: `admin@blacktail.demo`
-- password: `secret-password`
+- tenant admin: `admin@blacktail.demo` / `secret-password`
+- super admin: `super@blacktail.demo` / `secret-password` (open/start Crash)
 - tenant id: `01JC9K2M5N7P8Q3R4S6T7V8W9X`
+- seeded games: `lucky_reels`, `crash`
 
 ```bash
 curl -i -c cookies.txt -X POST http://127.0.0.1:8080/api/login \
@@ -95,7 +96,7 @@ Stack must be running (`make up`). Quality commands go through the `php` service
 ```bash
 make help              # list targets
 make up                # build + start stack
-make demo              # migrate + seed
+make demo              # migrate + ClickHouse schema + seed
 make test              # PHPUnit
 make phpstan
 make cs                # PHP CS Fixer dry-run

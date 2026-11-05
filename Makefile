@@ -11,8 +11,9 @@ help: ## Show available targets
 up: ## Build and start the Docker stack
 	$(DOCKER_COMPOSE) up -d --build
 
-demo: ## Run migrations and seed demo data (stack must be up)
+demo: ## Run migrations, ClickHouse schema and seed demo data (stack must be up)
 	$(PHP) bin/console doctrine:migrations:migrate --no-interaction
+	$(PHP) bin/console analytics:clickhouse:setup
 	$(PHP) bin/console app:demo:seed
 
 test: ## Run PHPUnit
