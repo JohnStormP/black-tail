@@ -35,6 +35,7 @@ make demo              # migrations + app:demo:seed
 | Service | URL / port |
 | --- | --- |
 | HTTP (Nginx → PHP-FPM) | http://127.0.0.1:8080 |
+| Worker (`messenger:consume async`) | Compose service `worker` (no host port) |
 | RabbitMQ management | http://127.0.0.1:15672 (`guest` / `guest`) |
 | Mercure hub | http://127.0.0.1:3000/.well-known/mercure |
 | Postgres | `127.0.0.1:5432` |

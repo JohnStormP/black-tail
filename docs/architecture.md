@@ -88,7 +88,7 @@ Edges are the important runtime dependencies only, not a full import graph.
 1. Client places a bet (`POST /api/bets`), then accepts it (`POST /api/bets/{id}/accept`) with wallet + reserve ledger ids.
 2. `AcceptBetHandler` reserves funds via Wallet (`ReserveWallet`).
 3. Settle (`POST /api/bets/{id}/settle`) marks won/lost and settles or releases the wallet hold.
-4. Domain events fan out through Messenger: analytics records (ClickHouse), optional bonus wagering / risk side effects.
+4. Domain events fan out through Messenger: analytics records (ClickHouse), optional bonus wagering / risk side effects. Async consumers run in the Compose `worker` service (`messenger:consume async`).
 5. Bonus cash is locked on the wallet (`bonus_amount`) until wagering completes (then unlock to `available`); expire/cancel forfeits locked bonus so it is never withdrawable twice.
 
 ### Payment deposit / withdraw

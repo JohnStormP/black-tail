@@ -24,7 +24,7 @@ final class RecordBetPlacedAnalyticsMessageHandler
      */
     public function __invoke(RecordBetPlacedAnalyticsMessage $message): void
     {
-        if (!$this->consumedMessages->claim(self::CONSUMER, $message->betId)) {
+        if ($this->consumedMessages->has(self::CONSUMER, $message->betId)) {
             return;
         }
 
@@ -42,5 +42,7 @@ final class RecordBetPlacedAnalyticsMessageHandler
         $this->clickHouse->execute(
             'INSERT INTO '.ClickHouseSchema::BET_EVENTS_TABLE." FORMAT JSONEachRow\n".$row,
         );
+
+        $this->consumedMessages->claim(self::CONSUMER, $message->betId);
     }
 }

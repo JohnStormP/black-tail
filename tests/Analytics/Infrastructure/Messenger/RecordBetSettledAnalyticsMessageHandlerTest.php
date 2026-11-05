@@ -2,6 +2,7 @@
 
 namespace App\Tests\Analytics\Infrastructure\Messenger;
 
+use App\Analytics\Application\ClickHouse\ClickHouseClientInterface;
 use App\Analytics\Application\Message\RecordBetSettledAnalyticsMessage;
 use App\Analytics\Infrastructure\Messenger\RecordBetSettledAnalyticsMessageHandler;
 use App\Tests\Shared\Doubles\InMemoryConsumedMessageStore;
@@ -39,6 +40,43 @@ final class RecordBetSettledAnalyticsMessageHandlerTest extends TestCase
         $handler($this->message());
 
         $this->assertSame([], $clickHouse->executed);
+    }
+
+    public function testDoesNotClaimWhenClickHouseInsertFails(): void
+    {
+        $clickHouse = new class implements ClickHouseClientInterface {
+            public function ping(): void
+            {
+            }
+
+            public function execute(string $sql): void
+            {
+                throw new \RuntimeException('ch down');
+            }
+
+            public function select(string $sql): array
+            {
+                return [];
+            }
+        };
+        $store = new InMemoryConsumedMessageStore();
+        $handler = new RecordBetSettledAnalyticsMessageHandler($clickHouse, $store);
+
+        try {
+            $handler($this->message());
+            $this->fail('Expected RuntimeException');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('ch down', $e->getMessage());
+        }
+
+        $this->assertFalse($store->has(
+            RecordBetSettledAnalyticsMessageHandler::CONSUMER,
+            '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+        ));
+        $this->assertTrue($store->claim(
+            RecordBetSettledAnalyticsMessageHandler::CONSUMER,
+            '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+        ));
     }
 
     private function message(): RecordBetSettledAnalyticsMessage

@@ -16,12 +16,17 @@ final class DoctrineConsumedMessageStore implements ConsumedMessageStoreInterfac
     ) {
     }
 
-    public function claim(string $consumer, string $messageKey): bool
+    public function has(string $consumer, string $messageKey): bool
     {
-        if (null !== $this->entityManager->find(ConsumedMessage::class, [
+        return null !== $this->entityManager->find(ConsumedMessage::class, [
             'consumer' => $consumer,
             'messageKey' => $messageKey,
-        ])) {
+        ]);
+    }
+
+    public function claim(string $consumer, string $messageKey): bool
+    {
+        if ($this->has($consumer, $messageKey)) {
             return false;
         }
 

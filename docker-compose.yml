@@ -19,6 +19,26 @@ services:
         condition: service_healthy
       mercure:
         condition: service_started
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - ./:/app
+    working_dir: /app
+    env_file:
+      - .env
+    command: php bin/console messenger:consume async --time-limit=3600 --memory-limit=128M
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
   nginx:
     image: nginx:alpine
     ports:

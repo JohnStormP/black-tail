@@ -9,6 +9,11 @@ final class InMemoryConsumedMessageStore implements ConsumedMessageStoreInterfac
     /** @var array<string, true> */
     private array $claimed = [];
 
+    public function has(string $consumer, string $messageKey): bool
+    {
+        return isset($this->claimed[$consumer."\0".$messageKey]);
+    }
+
     public function claim(string $consumer, string $messageKey): bool
     {
         $key = $consumer."\0".$messageKey;

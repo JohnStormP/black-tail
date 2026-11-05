@@ -20,7 +20,9 @@ final class DoctrineConsumedMessageStoreTest extends KernelTestCase
         $store = self::getContainer()->get(ConsumedMessageStoreInterface::class);
         self::assertInstanceOf(ConsumedMessageStoreInterface::class, $store);
 
+        $this->assertFalse($store->has('demo_consumer', 'msg-1'));
         $this->assertTrue($store->claim('demo_consumer', 'msg-1'));
+        $this->assertTrue($store->has('demo_consumer', 'msg-1'));
         $this->assertFalse($store->claim('demo_consumer', 'msg-1'));
         $this->assertTrue($store->claim('demo_consumer', 'msg-2'));
         $this->assertTrue($store->claim('other_consumer', 'msg-1'));
