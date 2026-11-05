@@ -8,6 +8,10 @@ services:
     working_dir: /app
     env_file:
       - .env
+    environment:
+      AI_LLM_BASE_URL: ${AI_LLM_BASE_URL:-}
+      AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
+      AI_LLM_MODEL: ${AI_LLM_MODEL:-gpt-4o-mini}
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,6 +32,10 @@ services:
     working_dir: /app
     env_file:
       - .env
+    environment:
+      AI_LLM_BASE_URL: ${AI_LLM_BASE_URL:-}
+      AI_LLM_API_KEY: ${AI_LLM_API_KEY:-}
+      AI_LLM_MODEL: ${AI_LLM_MODEL:-gpt-4o-mini}
     command: php bin/console messenger:consume async --time-limit=3600 --memory-limit=128M
     restart: unless-stopped
     depends_on:

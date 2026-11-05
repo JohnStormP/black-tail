@@ -4,12 +4,7 @@ namespace App\AI\Infrastructure\Llm;
 
 use App\AI\Application\Llm\LlmClientInterface;
 use App\AI\Domain\Exception\LlmException;
-use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 
-/**
- * Deterministic LLM for tests.
- */
-#[AsAlias(LlmClientInterface::class, public: true)]
 final class FakeLlmClient implements LlmClientInterface
 {
     /**

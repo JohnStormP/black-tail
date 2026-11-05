@@ -107,7 +107,7 @@ Edges are the important runtime dependencies only, not a full import graph.
 
 1. `POST /api/ai/ask` is rate-limited per authenticated user.
 2. `AskAnalyticsQuestionHandler` builds a short analytics context (aggregates from Analytics / ClickHouse reads).
-3. Question goes to an LLM client; default wiring is **FakeLlmClient** so demo works without an API key. Real OpenAI-compatible URL/key are optional via env.
+3. Question goes to an LLM client via **ConfigurableLlmClient**: empty `AI_LLM_BASE_URL` / `AI_LLM_API_KEY` → **FakeLlmClient**; both set → **HttpOpenAiCompatibleLlmClient** (OpenAI or Gemini OpenAI-compatible endpoint).
 
 ## HTTP map
 

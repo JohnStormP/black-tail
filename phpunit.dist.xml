@@ -16,6 +16,9 @@
         <server name="APP_ENV" value="test" force="true" />
         <env name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
+        <env name="AI_LLM_BASE_URL" value="" force="true" />
+        <env name="AI_LLM_API_KEY" value="" force="true" />
+        <env name="AI_LLM_MODEL" value="gpt-4o-mini" force="true" />
     </php>
 
     <testsuites>

@@ -49,7 +49,14 @@ final class HttpOpenAiCompatibleLlmClient implements LlmClientInterface
         }
 
         if (200 !== $statusCode) {
-            throw LlmException::requestFailed('LLM response code: '.$statusCode);
+            $body = '';
+            try {
+                $body = trim($response->getContent(false));
+            } catch (\Throwable) {
+            }
+            $detail = '' !== $body ? ' body='.substr($body, 0, 500) : '';
+
+            throw LlmException::requestFailed('LLM response code: '.$statusCode.$detail);
         }
 
         try {
