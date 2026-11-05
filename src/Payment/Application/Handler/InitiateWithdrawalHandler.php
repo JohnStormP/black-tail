@@ -11,6 +11,7 @@ use App\Payment\Domain\Provider\PaymentProviderResolver;
 use App\Payment\Domain\Repository\PaymentRepositoryInterface;
 use App\Payment\Domain\ValueObject\PaymentId;
 use App\Payment\Domain\ValueObject\PaymentIdempotencyKey;
+use App\Payment\Domain\ValueObject\PaymentStatus;
 use App\Payment\Domain\ValueObject\PaymentType;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
@@ -18,6 +19,7 @@ use App\Risk\Application\Service\RiskGuard;
 use App\Risk\Domain\ValueObject\RiskOperation;
 use App\Shared\Application\TransactionManagerInterface;
 use App\Wallet\Domain\Entity\LedgerEntry;
+use App\Wallet\Domain\Entity\Wallet;
 use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
 use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
@@ -51,7 +53,6 @@ final class InitiateWithdrawalHandler
         $reserveEntryId = LedgerEntryId::fromString($command->reserveEntryId);
         $releaseEntryId = LedgerEntryId::fromString($command->releaseEntryId);
         $player = $this->players->getById($playerId);
-        $provider = $command->provider;
 
         if (!$player->isActive()) {
             throw InvalidPaymentException::playerNotActive($playerId);
@@ -71,13 +72,26 @@ final class InitiateWithdrawalHandler
             throw InvalidPaymentException::walletCurrencyMismatch($paymentId, $walletId);
         }
 
+        $payment = null;
         $existing = $this->payments->findByIdempotencyKey($paymentIdempotencyKey);
 
         if (null !== $existing) {
-            if ($this->matchesRequest($existing, $paymentId, $playerId, $walletId, $money, $command->provider)) {
+            if (!$this->matchesRequest($existing, $paymentId, $playerId, $walletId, $money, $command->provider)) {
+                throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
+            }
+
+            if (PaymentStatus::Pending !== $existing->status()) {
+                if (PaymentStatus::Failed === $existing->status()) {
+                    $this->transactions->transactional(function () use ($walletId, $money, $releaseEntryId): void {
+                        $wallet = $this->wallets->getByIdForUpdate($walletId);
+                        $this->releaseFunds($wallet, $walletId, $releaseEntryId, $money);
+                    });
+                }
+
                 return;
             }
-            throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
+
+            $payment = $existing;
         }
 
         $this->risk->assertAllowed(
@@ -87,18 +101,7 @@ final class InitiateWithdrawalHandler
             $money->amount(),
         );
 
-        $this->transactions->transactional(function () use (
-            $releaseEntryId,
-            $provider,
-            $reserveEntryId,
-            $paymentId,
-            $player,
-            $playerId,
-            $walletId,
-            $money,
-            $paymentIdempotencyKey,
-            $command
-        ): void {
+        if (null === $payment) {
             $payment = Payment::initiate(
                 $paymentId,
                 $player->tenantId(),
@@ -107,13 +110,14 @@ final class InitiateWithdrawalHandler
                 PaymentType::Withdrawal,
                 $money,
                 $paymentIdempotencyKey,
-                $command->provider
+                $command->provider,
             );
+
             try {
                 $this->payments->save($payment);
             } catch (UniqueConstraintViolationException) {
                 $existing = $this->payments->findByIdempotencyKey($paymentIdempotencyKey);
-                if (null !== $existing && $this->matchesRequest(
+                if (null === $existing || !$this->matchesRequest(
                     $existing,
                     $paymentId,
                     $playerId,
@@ -121,74 +125,139 @@ final class InitiateWithdrawalHandler
                     $money,
                     $command->provider,
                 )) {
+                    throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
+                }
+
+                if (PaymentStatus::Pending !== $existing->status()) {
+                    if (PaymentStatus::Failed === $existing->status()) {
+                        $this->transactions->transactional(function () use ($walletId, $money, $releaseEntryId): void {
+                            $wallet = $this->wallets->getByIdForUpdate($walletId);
+                            $this->releaseFunds($wallet, $walletId, $releaseEntryId, $money);
+                        });
+                    }
+
                     return;
                 }
-                throw PaymentIdempotencyConflictException::forKey($paymentIdempotencyKey);
+
+                $payment = $existing;
             }
+        }
+
+        $this->transactions->transactional(function () use ($walletId, $money, $reserveEntryId): void {
             $wallet = $this->wallets->getByIdForUpdate($walletId);
+            $this->reserveFunds($wallet, $walletId, $reserveEntryId, $money);
+        });
 
-            $existingReserve = $this->ledger->findById($reserveEntryId);
+        $result = $this->providers
+            ->resolve($payment->provider())
+            ->initiate(new PaymentProviderRequest(
+                $paymentId,
+                PaymentType::Withdrawal,
+                $money,
+                $paymentIdempotencyKey,
+            ));
 
-            if (null !== $existingReserve) {
-                if (
-                    !$existingReserve->walletId()->equals($walletId)
-                    || LedgerEntryType::Reserve !== $existingReserve->type()
-                    || !$existingReserve->amount()->equals($money)
-                ) {
-                    throw LedgerIdempotencyConflictException::forEntry($reserveEntryId);
+        if ($result->isDeclined()) {
+            $this->transactions->transactional(function () use (
+                $paymentId,
+                $walletId,
+                $money,
+                $releaseEntryId,
+                $result,
+            ): void {
+                $payment = $this->payments->getById($paymentId);
+
+                if (PaymentStatus::Failed === $payment->status()) {
+                    $wallet = $this->wallets->getByIdForUpdate($walletId);
+                    $this->releaseFunds($wallet, $walletId, $releaseEntryId, $money);
+
+                    return;
                 }
-            } else {
-                $wallet->reserve($money);
-                $this->wallets->save($wallet);
-                $this->ledger->save(LedgerEntry::record(
-                    $reserveEntryId,
-                    $wallet->id(),
-                    LedgerEntryType::Reserve,
-                    $money,
-                    $wallet->availableBalance(),
-                ));
-            }
-            $result = $this->providers
-                ->resolve($provider)
-                ->initiate(new PaymentProviderRequest(
-                    $paymentId,
-                    PaymentType::Withdrawal,
-                    $money,
-                    $paymentIdempotencyKey,
-                ));
-            if ($result->isDeclined()) {
+
+                if (PaymentStatus::Pending !== $payment->status()) {
+                    return;
+                }
+
                 $payment->markProcessing();
                 $payment->fail($result->declineReason ?? 'declined');
                 $this->payments->save($payment);
-                $existingRelease = $this->ledger->findById($releaseEntryId);
-                if (null !== $existingRelease) {
-                    if (
-                        !$existingRelease->walletId()->equals($walletId)
-                        || LedgerEntryType::Release !== $existingRelease->type()
-                        || !$existingRelease->amount()->equals($money)
-                    ) {
-                        throw LedgerIdempotencyConflictException::forEntry($releaseEntryId);
-                    }
-                } else {
-                    $wallet->release($money);
-                    $this->wallets->save($wallet);
-                    $this->ledger->save(LedgerEntry::record(
-                        $releaseEntryId,
-                        $wallet->id(),
-                        LedgerEntryType::Release,
-                        $money,
-                        $wallet->availableBalance(),
-                    ));
-                }
 
+                $wallet = $this->wallets->getByIdForUpdate($walletId);
+                $this->releaseFunds($wallet, $walletId, $releaseEntryId, $money);
+            });
+
+            return;
+        }
+
+        if ($result->isSubmitted()) {
+            $payment = $this->payments->getById($paymentId);
+            if (PaymentStatus::Pending !== $payment->status()) {
                 return;
             }
 
-            if ($result->isSubmitted()) {
-                $payment->markProcessing($result->providerReference);
-                $this->payments->save($payment);
+            $payment->markProcessing($result->providerReference);
+            $this->payments->save($payment);
+        }
+    }
+
+    private function reserveFunds(
+        Wallet $wallet,
+        WalletId $walletId,
+        LedgerEntryId $entryId,
+        Money $money,
+    ): void {
+        $existingReserve = $this->ledger->findById($entryId);
+        if (null !== $existingReserve) {
+            if (
+                !$existingReserve->walletId()->equals($walletId)
+                || LedgerEntryType::Reserve !== $existingReserve->type()
+                || !$existingReserve->amount()->equals($money)
+            ) {
+                throw LedgerIdempotencyConflictException::forEntry($entryId);
             }
-        });
+
+            return;
+        }
+
+        $wallet->reserve($money);
+        $this->wallets->save($wallet);
+        $this->ledger->save(LedgerEntry::record(
+            $entryId,
+            $wallet->id(),
+            LedgerEntryType::Reserve,
+            $money,
+            $wallet->availableBalance(),
+        ));
+    }
+
+    private function releaseFunds(
+        Wallet $wallet,
+        WalletId $walletId,
+        LedgerEntryId $entryId,
+        Money $money,
+    ): void {
+        $existingRelease = $this->ledger->findById($entryId);
+        if (null !== $existingRelease) {
+            if (
+                !$existingRelease->walletId()->equals($walletId)
+                || LedgerEntryType::Release !== $existingRelease->type()
+                || !$existingRelease->amount()->equals($money)
+            ) {
+                throw LedgerIdempotencyConflictException::forEntry($entryId);
+            }
+
+            return;
+        }
+
+        $wallet->release($money);
+        $this->wallets->save($wallet);
+        $this->ledger->save(LedgerEntry::record(
+            $entryId,
+            $wallet->id(),
+            LedgerEntryType::Release,
+            $money,
+            $wallet->availableBalance(),
+        ));
     }
 
     private function matchesRequest(

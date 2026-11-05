@@ -35,8 +35,10 @@ use App\Wallet\Domain\Entity\Wallet;
 use App\Wallet\Domain\Exception\InsufficientFundsException;
 use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
 use App\Wallet\Domain\Repository\WalletRepositoryInterface;
+use App\Wallet\Domain\ValueObject\Currency;
 use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
+use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -245,6 +247,126 @@ final class InitiateWithdrawalHandlerTest extends KernelTestCase
 
         $release = $this->ledger->getById(LedgerEntryId::fromString('01QXYZ0000000000000000000D'));
         $this->assertSame(LedgerEntryType::Release, $release->type());
+    }
+
+    public function testFailedRetryReleasesReservedFundsIfReleaseWasMissed(): void
+    {
+        $declining = new class implements PaymentProviderInterface {
+            public function supports(string $provider): bool
+            {
+                return 'fake' === strtolower(trim($provider));
+            }
+
+            public function initiate(PaymentProviderRequest $request): PaymentProviderResult
+            {
+                return new PaymentProviderResult(
+                    PaymentProviderInitiationStatus::Declined,
+                    null,
+                    'psp_rejected',
+                );
+            }
+        };
+
+        $transactions = self::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
+        $handler = new InitiateWithdrawalHandler(
+            $this->payments,
+            $this->players,
+            $this->wallets,
+            $this->ledger,
+            new PaymentProviderResolver([$declining]),
+            $transactions,
+            $risk,
+        );
+
+        $command = $this->command(
+            paymentId: '01WXYZ0000000000000000000J',
+            idempotencyKey: 'wd-failed-retry-001',
+            reserveEntryId: '01XXYZ0000000000000000000K',
+            releaseEntryId: '01YXYZ0000000000000000000M',
+        );
+
+        ($handler)($command);
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $wallet->reserve(Money::of(2000, Currency::Usd));
+        $this->wallets->save($wallet);
+        $this->entityManager->createQuery(
+            'DELETE FROM '.LedgerEntry::class.' e WHERE e.id = :id'
+        )->setParameter('id', '01YXYZ0000000000000000000M')->execute();
+        $this->entityManager->clear();
+
+        ($handler)($command);
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(5000, $wallet->availableBalance()->amount());
+        $this->assertSame(0, $wallet->reservedBalance()->amount());
+        $release = $this->ledger->getById(LedgerEntryId::fromString('01YXYZ0000000000000000000M'));
+        $this->assertSame(LedgerEntryType::Release, $release->type());
+    }
+
+    public function testProviderInitiateRunsOutsideDatabaseTransaction(): void
+    {
+        $entityManager = $this->entityManager;
+
+        $outsideTx = new class($entityManager) implements PaymentProviderInterface {
+            public function __construct(
+                private readonly EntityManagerInterface $entityManager,
+            ) {
+            }
+
+            public function supports(string $provider): bool
+            {
+                return 'fake' === strtolower(trim($provider));
+            }
+
+            public function initiate(PaymentProviderRequest $request): PaymentProviderResult
+            {
+                InitiateWithdrawalHandlerTest::assertFalse(
+                    $this->entityManager->getConnection()->isTransactionActive(),
+                );
+
+                return new PaymentProviderResult(
+                    PaymentProviderInitiationStatus::Submitted,
+                    'outside-tx-'.$request->paymentId->toString(),
+                );
+            }
+        };
+
+        $transactions = self::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+
+        $risk = self::getContainer()->get(RiskGuard::class);
+        self::assertInstanceOf(RiskGuard::class, $risk);
+
+        $handler = new InitiateWithdrawalHandler(
+            $this->payments,
+            $this->players,
+            $this->wallets,
+            $this->ledger,
+            new PaymentProviderResolver([$outsideTx]),
+            $transactions,
+            $risk,
+        );
+
+        ($handler)($this->command(
+            paymentId: '01SXYZ0000000000000000000E',
+            idempotencyKey: 'wd-outside-tx-001',
+            reserveEntryId: '01TXYZ0000000000000000000F',
+            releaseEntryId: '01VXYZ0000000000000000000H',
+        ));
+
+        $payment = $this->payments->getById(PaymentId::fromString('01SXYZ0000000000000000000E'));
+        $this->assertSame(PaymentStatus::Processing, $payment->status());
+        $this->assertSame('outside-tx-01SXYZ0000000000000000000E', $payment->providerReference());
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(3000, $wallet->availableBalance()->amount());
+        $this->assertSame(2000, $wallet->reservedBalance()->amount());
     }
 
     private function command(
