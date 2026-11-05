@@ -17,6 +17,9 @@ final class MicrosecondAwareSchemaManagerFactory implements SchemaManagerFactory
         $this->inner = $inner ?? new DefaultSchemaManagerFactory();
     }
 
+    /**
+     * @return AbstractSchemaManager<PostgreSQLPlatform>
+     */
     public function createSchemaManager(Connection $connection): AbstractSchemaManager
     {
         $platform = $connection->getDatabasePlatform();
