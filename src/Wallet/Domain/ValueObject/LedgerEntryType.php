@@ -12,4 +12,6 @@ enum LedgerEntryType: string
     case Release = 'release';
     case Settle = 'settle';
     case BonusCredit = 'bonus_credit';
+    case BonusUnlock = 'bonus_unlock';
+    case BonusForfeit = 'bonus_forfeit';
 }

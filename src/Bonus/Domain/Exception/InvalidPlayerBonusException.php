@@ -64,6 +64,31 @@ final class InvalidPlayerBonusException extends DomainException
         return new self('Player bonus with id "'.$playerBonusId->toString().'" is not active and cannot be credited');
     }
 
+    public static function alreadyCredited(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" has already been credited');
+    }
+
+    public static function notCredited(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" has not been credited to a wallet');
+    }
+
+    public static function missingCreditedWallet(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" is credited but wallet id is missing');
+    }
+
+    public static function missingForfeitEntryId(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" requires a forfeit ledger entry id');
+    }
+
+    public static function missingUnlockEntryId(PlayerBonusId $playerBonusId): self
+    {
+        return new self('Player bonus with id "'.$playerBonusId->toString().'" requires an unlock ledger entry id');
+    }
+
     public static function invalidExpiration(): self
     {
         return new self('Player bonus expiration must be after granted at');

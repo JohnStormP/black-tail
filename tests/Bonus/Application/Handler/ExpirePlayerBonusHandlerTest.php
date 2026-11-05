@@ -85,7 +85,14 @@ final class ExpirePlayerBonusHandlerTest extends KernelTestCase
         ($activateCampaign)(new ActivateBonusCampaignCommand(self::CAMPAIGN_ID));
 
         $this->grant = new GrantPlayerBonusHandler($this->playerBonuses, $campaigns, $players);
-        $this->expire = new ExpirePlayerBonusHandler($this->playerBonuses);
+
+        $wallets = self::getContainer()->get(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class, $wallets);
+        $ledger = self::getContainer()->get(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class, $ledger);
+        $transactions = self::getContainer()->get(\App\Shared\Application\TransactionManagerInterface::class);
+        self::assertInstanceOf(\App\Shared\Application\TransactionManagerInterface::class, $transactions);
+        $this->expire = new ExpirePlayerBonusHandler($this->playerBonuses, $wallets, $ledger, $transactions);
     }
 
     public function testExpiresWhenDue(): void

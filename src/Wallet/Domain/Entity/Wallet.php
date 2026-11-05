@@ -32,6 +32,9 @@ class Wallet
     #[ORM\Column(name: 'reserved_amount', type: 'bigint')]
     private int $reservedAmount;
 
+    #[ORM\Column(name: 'bonus_amount', type: 'bigint')]
+    private int $bonusAmount;
+
     #[ORM\Column(name: 'status', type: 'string', length: 32, enumType: WalletStatus::class)]
     private WalletStatus $status;
 
@@ -54,6 +57,7 @@ class Wallet
         $wallet->currency = $currency;
         $wallet->availableAmount = 0;
         $wallet->reservedAmount = 0;
+        $wallet->bonusAmount = 0;
         $wallet->status = WalletStatus::Active;
         $wallet->createdAt = $createdAt;
 
@@ -83,6 +87,11 @@ class Wallet
     public function reservedBalance(): Money
     {
         return Money::of($this->reservedAmount, $this->currency);
+    }
+
+    public function bonusBalance(): Money
+    {
+        return Money::of($this->bonusAmount, $this->currency);
     }
 
     public function status(): WalletStatus
@@ -206,6 +215,48 @@ class Wallet
         $this->reservedAmount = $reserved
             ->subtract($amount)
             ->amount();
+    }
+
+    public function creditBonus(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotCreditBonus();
+        }
+
+        $current = Money::of($this->bonusAmount, $this->currency);
+        $this->bonusAmount = $current->add($amount)->amount();
+    }
+
+    public function unlockBonus(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotUnlockBonus();
+        }
+
+        $bonus = Money::of($this->bonusAmount, $this->currency);
+        $available = Money::of($this->availableAmount, $this->currency);
+
+        if ($bonus->lessThan($amount)) {
+            throw InsufficientFundsException::forBonusUnlock();
+        }
+
+        $this->bonusAmount = $bonus->subtract($amount)->amount();
+        $this->availableAmount = $available->add($amount)->amount();
+    }
+
+    public function forfeitBonus(Money $amount): void
+    {
+        if (!$this->isActive()) {
+            throw WalletNotActiveException::cannotForfeitBonus();
+        }
+
+        $bonus = Money::of($this->bonusAmount, $this->currency);
+
+        if ($bonus->lessThan($amount)) {
+            throw InsufficientFundsException::forBonusForfeit();
+        }
+
+        $this->bonusAmount = $bonus->subtract($amount)->amount();
     }
 
     public function freeze(): void

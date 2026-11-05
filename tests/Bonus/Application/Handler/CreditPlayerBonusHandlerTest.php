@@ -130,7 +130,10 @@ final class CreditPlayerBonusHandlerTest extends KernelTestCase
         ));
 
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
-        $this->assertSame(1000, $wallet->availableBalance()->amount());
+        $bonus = $this->playerBonuses->getById(PlayerBonusId::fromString(self::PLAYER_BONUS_ID));
+        $this->assertSame(0, $wallet->availableBalance()->amount());
+        $this->assertSame(1000, $wallet->bonusBalance()->amount());
+        $this->assertTrue($bonus->isCredited());
 
         $entry = $this->ledger->getById(LedgerEntryId::fromString(self::CREDIT_ENTRY_ID));
         $this->assertSame(LedgerEntryType::BonusCredit, $entry->type());
@@ -151,7 +154,26 @@ final class CreditPlayerBonusHandlerTest extends KernelTestCase
         ($this->credit)($command);
 
         $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
-        $this->assertSame(1000, $wallet->availableBalance()->amount());
+        $this->assertSame(0, $wallet->availableBalance()->amount());
+        $this->assertSame(1000, $wallet->bonusBalance()->amount());
+    }
+
+    public function testRejectsSecondCreditWithDifferentEntryId(): void
+    {
+        $this->seedGrantedBonusAndWallet();
+        ($this->credit)(new CreditPlayerBonusCommand(
+            self::PLAYER_BONUS_ID,
+            self::WALLET_ID,
+            self::CREDIT_ENTRY_ID,
+        ));
+
+        $this->expectException(InvalidPlayerBonusException::class);
+
+        ($this->credit)(new CreditPlayerBonusCommand(
+            self::PLAYER_BONUS_ID,
+            self::WALLET_ID,
+            '01HXYZ00000000000000000009',
+        ));
     }
 
     public function testRejectsLedgerIdempotencyConflict(): void

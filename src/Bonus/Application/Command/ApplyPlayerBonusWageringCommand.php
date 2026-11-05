@@ -7,6 +7,7 @@ final readonly class ApplyPlayerBonusWageringCommand
     public function __construct(
         public string $playerBonusId,
         public int $amountMinor,
+        public ?string $unlockEntryId = null,
     ) {
     }
 }

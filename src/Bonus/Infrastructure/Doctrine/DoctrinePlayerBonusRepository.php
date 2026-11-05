@@ -42,6 +42,24 @@ final class DoctrinePlayerBonusRepository implements PlayerBonusRepositoryInterf
         return $bonus;
     }
 
+    public function getByIdForUpdate(PlayerBonusId $id): PlayerBonus
+    {
+        $bonus = $this->entityManager->createQueryBuilder()
+            ->select('pb')
+            ->from(PlayerBonus::class, 'pb')
+            ->where('pb.id = :id')
+            ->setParameter('id', $id->toString())
+            ->getQuery()
+            ->setLockMode(\Doctrine\DBAL\LockMode::PESSIMISTIC_WRITE)
+            ->getOneOrNullResult();
+
+        if (null === $bonus) {
+            throw PlayerBonusNotFoundException::withId($id);
+        }
+
+        return $bonus;
+    }
+
     public function findByPlayerAndCampaign(PlayerId $playerId, BonusCampaignId $campaignId): ?PlayerBonus
     {
         return $this->entityManager->getRepository(PlayerBonus::class)->findOneBy([

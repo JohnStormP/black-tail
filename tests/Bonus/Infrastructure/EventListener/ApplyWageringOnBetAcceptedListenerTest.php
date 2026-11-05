@@ -48,7 +48,19 @@ final class ApplyWageringOnBetAcceptedListenerTest extends KernelTestCase
         $dispatcher->addListener(PlayerBonusCompleted::class, function (PlayerBonusCompleted $event): void {
             $this->recordedEvents[] = $event;
         });
-        $this->listener = new ApplyWageringOnBetAcceptedListener($this->playerBonuses, $dispatcher);
+        $wallets = self::getContainer()->get(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class, $wallets);
+        $ledger = self::getContainer()->get(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class, $ledger);
+        $transactions = self::getContainer()->get(\App\Shared\Application\TransactionManagerInterface::class);
+        self::assertInstanceOf(\App\Shared\Application\TransactionManagerInterface::class, $transactions);
+        $this->listener = new ApplyWageringOnBetAcceptedListener(
+            $this->playerBonuses,
+            $wallets,
+            $ledger,
+            $transactions,
+            $dispatcher,
+        );
 
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);

@@ -85,7 +85,19 @@ final class ApplyPlayerBonusWageringHandlerTest extends KernelTestCase
         $dispatcher->addListener(PlayerBonusCompleted::class, function (PlayerBonusCompleted $event): void {
             $this->recordedEvents[] = $event;
         });
-        $this->apply = new ApplyPlayerBonusWageringHandler($this->playerBonuses, $dispatcher);
+        $wallets = self::getContainer()->get(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\WalletRepositoryInterface::class, $wallets);
+        $ledger = self::getContainer()->get(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(\App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface::class, $ledger);
+        $transactions = self::getContainer()->get(\App\Shared\Application\TransactionManagerInterface::class);
+        self::assertInstanceOf(\App\Shared\Application\TransactionManagerInterface::class, $transactions);
+        $this->apply = new ApplyPlayerBonusWageringHandler(
+            $this->playerBonuses,
+            $wallets,
+            $ledger,
+            $transactions,
+            $dispatcher,
+        );
 
         ($createCampaign)(new CreateBonusCampaignCommand(
             self::CAMPAIGN_ID,

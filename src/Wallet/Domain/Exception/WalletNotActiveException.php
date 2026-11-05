@@ -30,4 +30,19 @@ final class WalletNotActiveException extends DomainException
     {
         return new self('Cannot settle on an inactive (frozen) wallet');
     }
+
+    public static function cannotCreditBonus(): self
+    {
+        return new self('Cannot credit bonus on an inactive (frozen) wallet');
+    }
+
+    public static function cannotUnlockBonus(): self
+    {
+        return new self('Cannot unlock bonus on an inactive (frozen) wallet');
+    }
+
+    public static function cannotForfeitBonus(): self
+    {
+        return new self('Cannot forfeit bonus on an inactive (frozen) wallet');
+    }
 }

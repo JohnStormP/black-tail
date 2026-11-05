@@ -34,7 +34,7 @@ final class CreditPlayerBonusHandler
             $entryId = LedgerEntryId::fromString($command->creditEntryId);
 
             $wallet = $this->wallets->getByIdForUpdate($walletId);
-            $bonus = $this->playerBonuses->getById($playerBonusId);
+            $bonus = $this->playerBonuses->getByIdForUpdate($playerBonusId);
 
             if (PlayerBonusStatus::Active !== $bonus->status()) {
                 throw InvalidPlayerBonusException::cannotCreditInactiveBonus($playerBonusId);
@@ -62,14 +62,20 @@ final class CreditPlayerBonusHandler
                 return;
             }
 
-            $wallet->credit($money);
+            if ($bonus->isCredited()) {
+                throw InvalidPlayerBonusException::alreadyCredited($playerBonusId);
+            }
+
+            $wallet->creditBonus($money);
+            $bonus->markCredited($walletId);
             $this->wallets->save($wallet);
+            $this->playerBonuses->save($bonus);
             $this->ledger->save(LedgerEntry::record(
                 $entryId,
                 $wallet->id(),
                 LedgerEntryType::BonusCredit,
                 $money,
-                $wallet->availableBalance(),
+                $wallet->bonusBalance(),
             ));
         });
     }

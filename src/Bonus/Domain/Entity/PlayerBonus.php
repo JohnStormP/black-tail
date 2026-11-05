@@ -11,6 +11,7 @@ use App\Player\Domain\ValueObject\PlayerId;
 use App\Tenant\Domain\ValueObject\TenantId;
 use App\Wallet\Domain\ValueObject\Currency;
 use App\Wallet\Domain\ValueObject\Money;
+use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -51,6 +52,12 @@ class PlayerBonus
 
     #[ORM\Column(name: 'expires_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $expiresAt;
+
+    #[ORM\Column(name: 'wallet_id', type: 'string', length: 26, nullable: true)]
+    private ?string $walletId = null;
+
+    #[ORM\Column(name: 'credited_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $creditedAt = null;
 
     private function __construct()
     {
@@ -155,9 +162,38 @@ class PlayerBonus
         return $this->expiresAt;
     }
 
+    public function walletId(): ?WalletId
+    {
+        return null === $this->walletId ? null : WalletId::fromString($this->walletId);
+    }
+
+    public function creditedAt(): ?\DateTimeImmutable
+    {
+        return $this->creditedAt;
+    }
+
+    public function isCredited(): bool
+    {
+        return null !== $this->creditedAt;
+    }
+
     public function isActive(): bool
     {
         return PlayerBonusStatus::Active === $this->status;
+    }
+
+    public function markCredited(WalletId $walletId, \DateTimeImmutable $creditedAt = new \DateTimeImmutable()): void
+    {
+        if (PlayerBonusStatus::Active !== $this->status) {
+            throw InvalidPlayerBonusException::cannotCreditInactiveBonus($this->id());
+        }
+
+        if ($this->isCredited()) {
+            throw InvalidPlayerBonusException::alreadyCredited($this->id());
+        }
+
+        $this->walletId = $walletId->toString();
+        $this->creditedAt = $creditedAt;
     }
 
     public function expire(\DateTimeImmutable $now = new \DateTimeImmutable()): void

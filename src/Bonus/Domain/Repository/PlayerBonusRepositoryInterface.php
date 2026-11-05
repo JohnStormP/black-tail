@@ -20,6 +20,11 @@ interface PlayerBonusRepositoryInterface
      */
     public function getById(PlayerBonusId $id): PlayerBonus;
 
+    /**
+     * @throws PlayerBonusNotFoundException
+     */
+    public function getByIdForUpdate(PlayerBonusId $id): PlayerBonus;
+
     public function findByPlayerAndCampaign(PlayerId $playerId, BonusCampaignId $campaignId): ?PlayerBonus;
 
     public function findOldestActiveByPlayer(PlayerId $playerId, Currency $currency): ?PlayerBonus;

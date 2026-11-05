@@ -25,4 +25,14 @@ final class InsufficientFundsException extends DomainException
     {
         return new self('Insufficient reserved funds for settle');
     }
+
+    public static function forBonusUnlock(): self
+    {
+        return new self('Insufficient bonus funds for unlock');
+    }
+
+    public static function forBonusForfeit(): self
+    {
+        return new self('Insufficient bonus funds for forfeit');
+    }
 }
