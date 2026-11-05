@@ -70,13 +70,19 @@ CH;
         $table = ClickHouseSchema::BET_SETTLED_EVENTS_TABLE;
         $sql = <<<CH
 SELECT
-    toDate(occurred_at) AS day,
-    sum(stake_minor) AS stake_minor,
-    sum(payout_minor) AS payout_minor,
-    sum(stake_minor) - sum(payout_minor) AS ggr_minor
-FROM {$table}
-WHERE occurred_at >= '$from' AND occurred_at < '$to' AND tenant_id = '$tenantId'
-GROUP BY day
+    day,
+    stake_minor,
+    payout_minor,
+    stake_minor - payout_minor AS ggr_minor
+FROM (
+    SELECT
+        toDate(occurred_at) AS day,
+        sum(stake_minor) AS stake_minor,
+        sum(payout_minor) AS payout_minor
+    FROM {$table}
+    WHERE occurred_at >= '$from' AND occurred_at < '$to' AND tenant_id = '$tenantId'
+    GROUP BY day
+)
 ORDER BY day
 CH;
         $rows = $this->clickHouse->select($sql);

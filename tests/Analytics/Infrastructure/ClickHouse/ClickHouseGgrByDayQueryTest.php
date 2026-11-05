@@ -26,7 +26,7 @@ final class ClickHouseGgrByDayQueryTest extends TestCase
         $this->assertNotNull($client->lastSql);
         $this->assertStringContainsString('bet_settled_events', $client->lastSql);
         $this->assertStringContainsString('sum(stake_minor)', $client->lastSql);
-        $this->assertStringContainsString('ggr_minor', $client->lastSql);
+        $this->assertStringContainsString('stake_minor - payout_minor AS ggr_minor', $client->lastSql);
         $this->assertStringContainsString('GROUP BY', $client->lastSql);
         $this->assertStringContainsString('ORDER BY', $client->lastSql);
         $this->assertStringContainsString('2026-10-20 00:00:00', $client->lastSql);
