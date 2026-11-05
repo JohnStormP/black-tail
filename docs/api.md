@@ -81,9 +81,9 @@ Every response includes `X-Request-Id` (echoes a valid incoming header, otherwis
 
 | Method | Path | Auth | Body / query | Notes |
 |--------|------|------|--------------|-------|
-| POST | `/api/crash/rounds` | auth | `{ roundId }` | open round |
-| POST | `/api/crash/rounds/{roundId}/start` | auth | - | |
-| GET | `/api/crash/rounds/{roundId}/stream` | auth | - | Mercure / stream |
+| POST | `/api/crash/rounds` | super | `{ roundId }` | open round |
+| POST | `/api/crash/rounds/{roundId}/start` | super | - | |
+| GET | `/api/crash/rounds/{roundId}/stream` | auth | - | Mercure demo-only / stream |
 | POST | `/api/crash/bets` | tenant | `{ betId, roundId, playerId, walletId, reserveEntryId, amountMinor, currency }` | |
 | POST | `/api/crash/bets/{betId}/cash-out` | tenant | `{ settleEntryId, payoutEntryId }` | multiplier from server flight time; **400** if round not running / cash-out not allowed |
 

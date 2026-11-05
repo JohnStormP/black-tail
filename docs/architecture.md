@@ -6,7 +6,7 @@ BLACK-TAIL is a **Symfony modular monolith**. Bounded contexts live under `src/<
 - **Application** - commands/queries and handlers (use-cases)
 - **Infrastructure** - Doctrine repos, HTTP controllers, Messenger listeners, external clients
 
-Cross-cutting pieces (demo seed, request id, caches, ClickHouse client wiring) sit in **Shared**. HTTP is thin: controllers map the request, call a handler, return JSON. Persistence for transactional data is **PostgreSQL**; analytics facts go to **ClickHouse** via async Messenger (RabbitMQ). **Redis** backs cache and rate limiting. **Mercure** publishes real-time crash flight updates.
+Cross-cutting pieces (demo seed, request id, caches, ClickHouse client wiring) sit in **Shared**. HTTP is thin: controllers map the request, call a handler, return JSON. Persistence for transactional data is **PostgreSQL**; analytics facts go to **ClickHouse** via async Messenger (RabbitMQ; Compose `worker` must consume `async`). **Redis** backs cache and rate limiting. **Mercure** can publish demo Crash flight updates (optional locally).
 
 ## Module map
 
@@ -47,7 +47,6 @@ flowchart TB
   API --> Payment
   API --> Betting
   API --> Game
-  API --> Bonus
   API --> Risk
   API --> Analytics
   API --> AI
@@ -69,7 +68,6 @@ flowchart TB
   Risk --> PG
 
   Betting -.->|domain events| RMQ
-  Payment -.->|domain events| RMQ
   Risk -.->|domain events| RMQ
   RMQ --> Analytics
   Analytics --> CH
@@ -80,6 +78,7 @@ flowchart TB
 ```
 
 Edges are the important runtime dependencies only, not a full import graph.
+**Bonus** has Application/Domain handlers only (no HTTP API). **Mercure** is demo-only for Crash flight UI, not a required production bus.
 
 ## Key flows
 
@@ -99,9 +98,9 @@ Edges are the important runtime dependencies only, not a full import graph.
 
 ### Crash cash-out
 
-1. Crash round lifecycle lives in **Game** (`Open` / `Start` / `PublishFlight` / `Resolve`).
-2. Player places a crash bet, then cashes out (`CashOutCrashBetHandler`) against the current multiplier.
-3. Wallet settle/payout runs in the same use-case path; flight updates can be pushed via Mercure for the UI.
+1. Crash round lifecycle lives in **Game** (`Open` / `Start` / `PublishFlight` / `Resolve`). Open/start HTTP is `ROLE_SUPER_ADMIN`; tick/resolve also exist as console commands.
+2. Player places a crash bet, then cashes out (`CashOutCrashBetHandler`) against the **server** multiplier (elapsed from `startedAt`), not a client-sent value.
+3. Wallet settle/payout runs in the same use-case path; Mercure can push flight updates for the demo UI (optional locally).
 
 ### AI ask
 

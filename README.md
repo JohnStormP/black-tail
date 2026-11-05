@@ -73,7 +73,7 @@ Modular monolith under `src/`. Each module keeps Domain / Application / Infrastr
 | Payment | Deposits and withdrawals (idempotent) |
 | Betting | Place / accept / settle / cancel / refund bets |
 | Game | Catalog, tenant games, Lucky Reels, Crash + Mercure |
-| Bonus | Campaigns, grants, wagering |
+| Bonus | Campaigns, grants, wagering (no HTTP API yet; handlers only) |
 | Risk | Rules and signals |
 | Analytics | Aggregates (GGR, bets by day) via ClickHouse |
 | AI | Natural-language ask over analytics context |
@@ -81,12 +81,12 @@ Modular monolith under `src/`. Each module keeps Domain / Application / Infrastr
 
 ### Flows (short)
 
-1. **Bet accept / settle** - accept reserves wallet funds; settle wins/losses and releases or pays out; domain events feed analytics (and related side effects).
-2. **Payment deposit / withdraw** - payment use-case + idempotency key drives wallet ledger entries; webhooks / fail-stale must not double-apply money.
-3. **Crash cash-out** - Game owns the round and cash-out against the multiplier; wallet settle runs in that path; flights can go out over Mercure.
-4. **AI ask** - rate-limited `/api/ai/ask` builds analytics context, then calls an LLM client (Fake by default for local demo).
+1. **Bet accept / settle** - accept reserves wallet funds; settle wins/losses and releases or pays out; domain events feed analytics (and related side effects). Async path needs the Compose `worker`.
+2. **Payment deposit / withdraw** - payment use-case + idempotency key drives wallet ledger entries; webhooks / fail-stale must not double-apply money. Payments do **not** publish to RabbitMQ.
+3. **Crash cash-out** - Game owns the round and cash-out against the server multiplier; wallet settle runs in that path; Mercure flight push is demo-only.
+4. **AI ask** - rate-limited `/api/ai/ask` builds analytics context, then **ConfigurableLlmClient** (Fake by default; real LLM when `AI_LLM_*` set).
 
-`frontend/` is a separate SPA client for this HTTP API on `:8080`.
+`frontend/` is a local SPA against this API on `:8080`; the directory is listed in `.gitignore` until it is wired in a later step.
 
 HTTP API map: [docs/api.md](docs/api.md).
 
