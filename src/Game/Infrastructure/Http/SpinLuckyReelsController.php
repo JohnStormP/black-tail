@@ -19,6 +19,8 @@ use App\Player\Domain\Exception\InvalidPlayerIdException;
 use App\Player\Domain\Exception\PlayerNotFoundException;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Wallet\Domain\Exception\LedgerIdempotencyConflictException;
+use App\Wallet\Domain\Exception\WalletNotFoundException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -71,12 +73,19 @@ final class SpinLuckyReelsController
                 $gameRoundId->toString(),
                 $gameId->toString(),
                 $playerId->toString(),
+                $body->walletId,
                 $body->betMinor,
+                $body->currency,
+                $body->reserveEntryId,
+                $body->settleEntryId,
+                $body->payoutEntryId,
             ));
         } catch (GameNotPlayableException|InvalidGameRoundException|GameProviderNotFoundException|InvalidGameIdException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
-        } catch (GameNotFoundException $e) {
+        } catch (GameNotFoundException|WalletNotFoundException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
+        } catch (LedgerIdempotencyConflictException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_CONFLICT);
         } catch (UniqueConstraintViolationException) {
             $existing = $this->rounds->findById($gameRoundId);
             if (null === $existing) {

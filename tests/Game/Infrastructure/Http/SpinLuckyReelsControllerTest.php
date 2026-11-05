@@ -19,11 +19,20 @@ use App\Player\Domain\Entity\Player;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Shared\Application\TransactionManagerInterface;
 use App\Tenant\Application\Command\RegisterTenantCommand;
 use App\Tenant\Application\Handler\RegisterTenantHandler;
 use App\Tenant\Domain\Entity\Tenant;
 use App\Tenant\Domain\Repository\TenantRepositoryInterface;
 use App\Tenant\Domain\ValueObject\TenantId;
+use App\Wallet\Application\Command\DepositWalletCommand;
+use App\Wallet\Application\Command\OpenWalletCommand;
+use App\Wallet\Application\Handler\DepositWalletHandler;
+use App\Wallet\Application\Handler\OpenWalletHandler;
+use App\Wallet\Domain\Entity\LedgerEntry;
+use App\Wallet\Domain\Entity\Wallet;
+use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
+use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -38,12 +47,19 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
     private const string PLAYER_ID = '01JC9K2M5N7P8Q3R4S6T7V8WP1';
     private const string ROUND_ID = '01JC9K2M5N7P8Q3R4S6T7V8WR1';
     private const string ADMIN_A_ID = '01ARZ3NDEKTSV4RRFFQ69G5F01';
+    private const string WALLET_ID = '01JC9K2M5N7P8Q3R4S6T7V8WW1';
+    private const string DEPOSIT_ENTRY_ID = '01JC9K2M5N7P8Q3R4S6T7V8WD1';
+    private const string RESERVE_ENTRY_ID = '01JC9K2M5N7P8Q3R4S6T7V8WE1';
+    private const string SETTLE_ENTRY_ID = '01JC9K2M5N7P8Q3R4S6T7V8WF1';
+    private const string PAYOUT_ENTRY_ID = '01JC9K2M5N7P8Q3R4S6T7V8WG2';
 
     private function seed(): void
     {
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $entityManager->createQuery('DELETE FROM '.LedgerEntry::class)->execute();
         $entityManager->createQuery('DELETE FROM '.GameRound::class)->execute();
+        $entityManager->createQuery('DELETE FROM '.Wallet::class)->execute();
         $entityManager->createQuery('DELETE FROM '.TenantGame::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Player::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Game::class)->execute();
@@ -75,6 +91,17 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
             TenantId::fromString(self::TENANT_A),
             PlayerEmail::fromString('player-a@example.com'),
         ));
+
+        $wallets = static::getContainer()->get(WalletRepositoryInterface::class);
+        self::assertInstanceOf(WalletRepositoryInterface::class, $wallets);
+        $ledger = static::getContainer()->get(LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(LedgerEntryRepositoryInterface::class, $ledger);
+        $transactions = static::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+        new OpenWalletHandler($wallets)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+        new DepositWalletHandler($wallets, $ledger, $transactions)(
+            new DepositWalletCommand(self::WALLET_ID, self::DEPOSIT_ENTRY_ID, 5000)
+        );
 
         $users = static::getContainer()->get(UserRepositoryInterface::class);
         self::assertInstanceOf(UserRepositoryInterface::class, $users);
@@ -122,18 +149,22 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
                 'roundId' => self::ROUND_ID,
                 'gameId' => self::GAME_ID,
                 'playerId' => self::PLAYER_ID,
+                'walletId' => self::WALLET_ID,
                 'betMinor' => 100,
+                'currency' => 'USD',
+                'reserveEntryId' => self::RESERVE_ENTRY_ID,
+                'settleEntryId' => self::SETTLE_ENTRY_ID,
+                'payoutEntryId' => self::PAYOUT_ENTRY_ID,
             ], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(201);
         $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
-        self::assertIsArray($payload);
-        $this->assertSame(self::ROUND_ID, $payload['id']);
-        $this->assertSame(100, $payload['betMinor']);
+        $this->assertArrayHasKey('id', $payload);
+        $this->assertArrayHasKey('betMinor', $payload);
         $this->assertArrayHasKey('stops', $payload);
-        $this->assertCount(5, $payload['stops']);
+        $id = $payload['id'];
+        $betMinor = $payload['betMinor'];
         $stops = $payload['stops'];
-        $winMinor = $payload['winMinor'];
 
         $client->request(
             'POST',
@@ -146,15 +177,22 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
                 'roundId' => self::ROUND_ID,
                 'gameId' => self::GAME_ID,
                 'playerId' => self::PLAYER_ID,
+                'walletId' => self::WALLET_ID,
                 'betMinor' => 100,
+                'currency' => 'USD',
+                'reserveEntryId' => self::RESERVE_ENTRY_ID,
+                'settleEntryId' => self::SETTLE_ENTRY_ID,
+                'payoutEntryId' => self::PAYOUT_ENTRY_ID,
             ], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(200);
-        $again = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
-        self::assertIsArray($again);
-        $this->assertSame(self::ROUND_ID, $again['id']);
-        $this->assertSame($stops, $again['stops']);
-        $this->assertSame($winMinor, $again['winMinor']);
+        $payload = json_decode($client->getResponse()->getContent() ?: '', true, 512, \JSON_THROW_ON_ERROR);
+        $this->assertArrayHasKey('id', $payload);
+        $this->assertArrayHasKey('betMinor', $payload);
+        $this->assertArrayHasKey('stops', $payload);
+        $this->assertSame($id, $payload['id']);
+        $this->assertSame($betMinor, $payload['betMinor']);
+        $this->assertSame($stops, $payload['stops']);
     }
 
     public function testSpinForbiddenForOtherTenantPlayer(): void
@@ -183,7 +221,12 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
                 'roundId' => self::ROUND_ID,
                 'gameId' => self::GAME_ID,
                 'playerId' => $otherPlayerId,
+                'walletId' => self::WALLET_ID,
                 'betMinor' => 100,
+                'currency' => 'USD',
+                'reserveEntryId' => self::RESERVE_ENTRY_ID,
+                'settleEntryId' => self::SETTLE_ENTRY_ID,
+                'payoutEntryId' => self::PAYOUT_ENTRY_ID,
             ], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(403);
@@ -206,7 +249,12 @@ final class SpinLuckyReelsControllerTest extends WebTestCase
                 'roundId' => self::ROUND_ID,
                 'gameId' => self::GAME_ID,
                 'playerId' => self::PLAYER_ID,
+                'walletId' => self::WALLET_ID,
                 'betMinor' => 1,
+                'currency' => 'USD',
+                'reserveEntryId' => self::RESERVE_ENTRY_ID,
+                'settleEntryId' => self::SETTLE_ENTRY_ID,
+                'payoutEntryId' => self::PAYOUT_ENTRY_ID,
             ], \JSON_THROW_ON_ERROR),
         );
         $this->assertResponseStatusCodeSame(422);

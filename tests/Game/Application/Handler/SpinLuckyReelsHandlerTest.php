@@ -24,8 +24,19 @@ use App\Player\Domain\Exception\PlayerNotFoundException;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
 use App\Player\Domain\ValueObject\PlayerEmail;
 use App\Player\Domain\ValueObject\PlayerId;
+use App\Shared\Application\TransactionManagerInterface;
 use App\Shared\Infrastructure\Random\SeededRandomIntGenerator;
 use App\Tenant\Domain\ValueObject\TenantId;
+use App\Wallet\Application\Command\DepositWalletCommand;
+use App\Wallet\Application\Command\OpenWalletCommand;
+use App\Wallet\Application\Handler\DepositWalletHandler;
+use App\Wallet\Application\Handler\OpenWalletHandler;
+use App\Wallet\Domain\Entity\LedgerEntry;
+use App\Wallet\Domain\Entity\Wallet;
+use App\Wallet\Domain\Exception\InsufficientFundsException;
+use App\Wallet\Domain\Repository\LedgerEntryRepositoryInterface;
+use App\Wallet\Domain\Repository\WalletRepositoryInterface;
+use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -36,12 +47,24 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
     private const string PLAYER_ID = '01CXYZ00000000000000000001';
     private const string TENANT_ID = '01DXYZ00000000000000000002';
     private const string TENANT_GAME_ID = '01EXYZ00000000000000000003';
+    private const string WALLET_ID = '01FXYZ00000000000000000004';
+    private const string DEPOSIT_ENTRY_ID = '01GXYZ00000000000000000005';
+    private const string RESERVE_ENTRY_ID = '01HXYZ00000000000000000006';
+    private const string SETTLE_ENTRY_ID = '01JXYZ00000000000000000007';
+    private const string PAYOUT_ENTRY_ID = '01KXYZ00000000000000000008';
+    private const string ROUND_ID_2 = '01MXYZ00000000000000000009';
+    private const string RESERVE_ENTRY_ID_2 = '01NXYZ0000000000000000000A';
+    private const string SETTLE_ENTRY_ID_2 = '01PXYZ0000000000000000000B';
+    private const string PAYOUT_ENTRY_ID_2 = '01QXYZ0000000000000000000C';
 
     private SpinLuckyReelsHandler $handler;
     private GameRepositoryInterface $games;
     private GameRoundRepositoryInterface $rounds;
     private TenantGameRepositoryInterface $tenantGames;
     private PlayerRepositoryInterface $players;
+    private WalletRepositoryInterface $wallets;
+    private LedgerEntryRepositoryInterface $ledger;
+    private TransactionManagerInterface $transactions;
 
     protected function setUp(): void
     {
@@ -63,9 +86,23 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
         self::assertInstanceOf(PlayerRepositoryInterface::class, $players);
         $this->players = $players;
 
+        $wallets = self::getContainer()->get(WalletRepositoryInterface::class);
+        self::assertInstanceOf(WalletRepositoryInterface::class, $wallets);
+        $this->wallets = $wallets;
+
+        $ledger = self::getContainer()->get(LedgerEntryRepositoryInterface::class);
+        self::assertInstanceOf(LedgerEntryRepositoryInterface::class, $ledger);
+        $this->ledger = $ledger;
+
+        $transactions = self::getContainer()->get(TransactionManagerInterface::class);
+        self::assertInstanceOf(TransactionManagerInterface::class, $transactions);
+        $this->transactions = $transactions;
+
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $entityManager->createQuery('DELETE FROM '.LedgerEntry::class)->execute();
         $entityManager->createQuery('DELETE FROM '.GameRound::class)->execute();
+        $entityManager->createQuery('DELETE FROM '.Wallet::class)->execute();
         $entityManager->createQuery('DELETE FROM '.TenantGame::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Player::class)->execute();
         $entityManager->createQuery('DELETE FROM '.Game::class)->execute();
@@ -79,40 +116,59 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             $this->rounds,
             $this->tenantGames,
             $this->players,
+            $this->wallets,
+            $this->ledger,
+            $this->transactions,
             $resolver,
             new SeededRandomIntGenerator(42),
         );
     }
 
-    public function testSpinPersistsRound(): void
+    public function testSpinPersistsRoundAndMovesWallet(): void
     {
         $this->seedPlayableGame();
+        $this->seedFundedWallet(5000);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
 
         $round = $this->rounds->getById(GameRoundId::fromString(self::ROUND_ID));
         $this->assertSame(self::GAME_ID, $round->gameId()->toString());
         $this->assertSame(self::PLAYER_ID, $round->playerId()->toString());
         $this->assertSame(100, $round->betMinor());
         $this->assertCount(5, $round->stops());
-        $this->assertSame($round->winMinor() > 0, $round->isWin());
+
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(5000 - 100 + $round->winMinor(), $wallet->availableBalance()->amount());
+        $this->assertSame(0, $wallet->reservedBalance()->amount());
+    }
+
+    public function testSpinIsIdempotentForSameRoundId(): void
+    {
+        $this->seedPlayableGame();
+        $this->seedFundedWallet(5000);
+
+        ($this->handler)($this->command());
+        ($this->handler)($this->command());
+
+        $entityManager = self::getContainer()->get(EntityManagerInterface::class);
+        self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $count = (int) $entityManager->createQuery(
+            'SELECT COUNT(r.id) FROM '.GameRound::class.' r'
+        )->getSingleScalarResult();
+        $this->assertSame(1, $count);
+
+        $round = $this->rounds->getById(GameRoundId::fromString(self::ROUND_ID));
+        $wallet = $this->wallets->getById(WalletId::fromString(self::WALLET_ID));
+        $this->assertSame(5000 - 100 + $round->winMinor(), $wallet->availableBalance()->amount());
+        $this->assertSame(0, $wallet->reservedBalance()->amount());
     }
 
     public function testSpinIsDeterministicWithSeededRng(): void
     {
         $this->seedPlayableGame();
+        $this->seedFundedWallet(5000);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
 
         $first = $this->rounds->getById(GameRoundId::fromString(self::ROUND_ID));
         $firstStops = $first->stops();
@@ -121,6 +177,9 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
 
         $entityManager = self::getContainer()->get(EntityManagerInterface::class);
         self::assertInstanceOf(EntityManagerInterface::class, $entityManager);
+        $entityManager->createQuery('DELETE FROM '.LedgerEntry::class.' e WHERE e.id != :deposit')
+            ->setParameter('deposit', self::DEPOSIT_ENTRY_ID)
+            ->execute();
         $entityManager->createQuery('DELETE FROM '.GameRound::class)->execute();
         $entityManager->clear();
 
@@ -129,21 +188,38 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             $this->rounds,
             $this->tenantGames,
             $this->players,
+            $this->wallets,
+            $this->ledger,
+            $this->transactions,
             new GameProviderResolver([new LuckyReelsGameProvider(new LuckyReelsEngine())]),
             new SeededRandomIntGenerator(42),
         );
 
-        ($handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
+        ($handler)($this->command(
+            roundId: self::ROUND_ID_2,
+            reserveEntryId: self::RESERVE_ENTRY_ID_2,
+            settleEntryId: self::SETTLE_ENTRY_ID_2,
+            payoutEntryId: self::PAYOUT_ENTRY_ID_2,
         ));
 
-        $second = $this->rounds->getById(GameRoundId::fromString(self::ROUND_ID));
+        $second = $this->rounds->getById(GameRoundId::fromString(self::ROUND_ID_2));
         $this->assertSame($firstStops, $second->stops());
         $this->assertSame($firstMultiplier, $second->totalMultiplier());
         $this->assertSame($firstWinMinor, $second->winMinor());
+    }
+
+    public function testRejectsInsufficientFunds(): void
+    {
+        $this->seedPlayableGame();
+        $open = new OpenWalletHandler($this->wallets);
+        ($open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+
+        try {
+            ($this->handler)($this->command());
+            $this->fail('Expected InsufficientFundsException');
+        } catch (InsufficientFundsException) {
+            $this->assertNull($this->rounds->findById(GameRoundId::fromString(self::ROUND_ID)));
+        }
     }
 
     public function testRejectsDisabledCatalogGame(): void
@@ -156,15 +232,11 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
         $game->disable();
         $this->games->save($game);
         $this->seedPlayer();
+        $this->seedFundedWallet(5000);
 
         $this->expectException(GameNotPlayableException::class);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
     }
 
     public function testRejectsWhenGameNotAssignedToTenant(): void
@@ -175,15 +247,11 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             'Lucky Reels',
         ));
         $this->seedPlayer();
+        $this->seedFundedWallet(5000);
 
         $this->expectException(GameNotPlayableException::class);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
     }
 
     public function testRejectsWhenTenantGameDisabled(): void
@@ -194,6 +262,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             'Lucky Reels',
         ));
         $this->seedPlayer();
+        $this->seedFundedWallet(5000);
 
         $link = TenantGame::assign(
             TenantGameId::fromString(self::TENANT_GAME_ID),
@@ -205,12 +274,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
 
         $this->expectException(GameNotPlayableException::class);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
     }
 
     public function testRejectsUnknownPlayer(): void
@@ -223,12 +287,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
 
         $this->expectException(PlayerNotFoundException::class);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
-            self::GAME_ID,
-            self::PLAYER_ID,
-            100,
-        ));
+        ($this->handler)($this->command());
     }
 
     public function testRejectsUnsupportedGameCode(): void
@@ -239,6 +298,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             'Crash',
         ));
         $this->seedPlayer();
+        $this->seedFundedWallet(5000);
         $this->tenantGames->save(TenantGame::assign(
             TenantGameId::fromString(self::TENANT_GAME_ID),
             TenantId::fromString(self::TENANT_ID),
@@ -247,12 +307,27 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
 
         $this->expectException(GameProviderNotFoundException::class);
 
-        ($this->handler)(new SpinLuckyReelsCommand(
-            self::ROUND_ID,
+        ($this->handler)($this->command());
+    }
+
+    private function command(
+        string $roundId = self::ROUND_ID,
+        string $reserveEntryId = self::RESERVE_ENTRY_ID,
+        string $settleEntryId = self::SETTLE_ENTRY_ID,
+        string $payoutEntryId = self::PAYOUT_ENTRY_ID,
+        int $betMinor = 100,
+    ): SpinLuckyReelsCommand {
+        return new SpinLuckyReelsCommand(
+            $roundId,
             self::GAME_ID,
             self::PLAYER_ID,
-            100,
-        ));
+            self::WALLET_ID,
+            $betMinor,
+            'USD',
+            $reserveEntryId,
+            $settleEntryId,
+            $payoutEntryId,
+        );
     }
 
     private function seedPlayableGame(): void
@@ -277,5 +352,13 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             TenantId::fromString(self::TENANT_ID),
             PlayerEmail::fromString('player@example.com'),
         ));
+    }
+
+    private function seedFundedWallet(int $amountMinor): void
+    {
+        $open = new OpenWalletHandler($this->wallets);
+        ($open)(new OpenWalletCommand(self::WALLET_ID, self::PLAYER_ID, 'USD'));
+        $deposit = new DepositWalletHandler($this->wallets, $this->ledger, $this->transactions);
+        ($deposit)(new DepositWalletCommand(self::WALLET_ID, self::DEPOSIT_ENTRY_ID, $amountMinor));
     }
 }

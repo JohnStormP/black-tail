@@ -8,7 +8,12 @@ final readonly class SpinLuckyReelsCommand
         public string $roundId,
         public string $gameId,
         public string $playerId,
+        public string $walletId,
         public int $betMinor,
+        public string $currency,
+        public string $reserveEntryId,
+        public string $settleEntryId,
+        public string $payoutEntryId,
     ) {
     }
 }
