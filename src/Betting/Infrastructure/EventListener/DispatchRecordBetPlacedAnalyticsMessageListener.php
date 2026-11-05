@@ -28,7 +28,7 @@ final class DispatchRecordBetPlacedAnalyticsMessageListener
             $event->roundId()->toString(),
             $event->amount()->amount(),
             $event->amount()->currency()->value,
-            $event->occurredAt()->format(\DateTime::ATOM),
+            $event->occurredAt()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.v'),
             $event->tenantId()->toString(),
         );
         $this->bus->dispatch($message);

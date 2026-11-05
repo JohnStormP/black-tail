@@ -39,6 +39,7 @@ use App\Wallet\Domain\Repository\WalletRepositoryInterface;
 use App\Wallet\Domain\ValueObject\WalletId;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class SpinLuckyReelsHandlerTest extends KernelTestCase
 {
@@ -121,6 +122,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             $this->transactions,
             $resolver,
             new SeededRandomIntGenerator(42),
+            new EventDispatcher(),
         );
     }
 
@@ -193,6 +195,7 @@ final class SpinLuckyReelsHandlerTest extends KernelTestCase
             $this->transactions,
             new GameProviderResolver([new LuckyReelsGameProvider(new LuckyReelsEngine())]),
             new SeededRandomIntGenerator(42),
+            new EventDispatcher(),
         );
 
         ($handler)($this->command(

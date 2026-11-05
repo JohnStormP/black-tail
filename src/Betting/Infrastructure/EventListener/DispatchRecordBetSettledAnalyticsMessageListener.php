@@ -28,7 +28,7 @@ final class DispatchRecordBetSettledAnalyticsMessageListener
             $event->stake()->amount(),
             $event->payoutMinor(),
             $event->stake()->currency()->value,
-            $event->occurredAt()->format(\DateTimeInterface::ATOM),
+            $event->occurredAt()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.v'),
             $event->tenantId()->toString(),
         );
         $this->bus->dispatch($message);

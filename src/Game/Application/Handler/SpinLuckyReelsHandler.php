@@ -4,6 +4,7 @@ namespace App\Game\Application\Handler;
 
 use App\Game\Application\Command\SpinLuckyReelsCommand;
 use App\Game\Domain\Entity\GameRound;
+use App\Game\Domain\Event\LuckyReelsSpun;
 use App\Game\Domain\Exception\GameNotPlayableException;
 use App\Game\Domain\Exception\InvalidGameRoundException;
 use App\Game\Domain\Provider\GameProviderResolver;
@@ -27,6 +28,7 @@ use App\Wallet\Domain\ValueObject\LedgerEntryId;
 use App\Wallet\Domain\ValueObject\LedgerEntryType;
 use App\Wallet\Domain\ValueObject\Money;
 use App\Wallet\Domain\ValueObject\WalletId;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class SpinLuckyReelsHandler
 {
@@ -40,6 +42,7 @@ final class SpinLuckyReelsHandler
         private readonly TransactionManagerInterface $transactions,
         private readonly GameProviderResolver $resolver,
         private readonly RandomIntGeneratorInterface $rng,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -73,17 +76,20 @@ final class SpinLuckyReelsHandler
 
         $provider = $this->resolver->resolve($game->code());
 
+        $spun = null;
         $this->transactions->transactional(function () use (
             $command,
             $gameRoundId,
             $gameId,
             $playerId,
+            $tenantId,
             $walletId,
             $bet,
             $reserveEntryId,
             $settleEntryId,
             $payoutEntryId,
             $provider,
+            &$spun,
         ): void {
             $wallet = $this->wallets->getByIdForUpdate($walletId);
 
@@ -135,7 +141,20 @@ final class SpinLuckyReelsHandler
                     Money::of($round->winMinor(), $bet->currency()),
                 );
             }
+
+            $spun = new LuckyReelsSpun(
+                $gameRoundId,
+                $gameId,
+                $playerId,
+                $tenantId,
+                $bet,
+                $round->winMinor(),
+            );
         });
+
+        if ($spun instanceof LuckyReelsSpun) {
+            $this->eventDispatcher->dispatch($spun);
+        }
     }
 
     private function reserveStake(Wallet $wallet, LedgerEntryId $entryId, Money $stake): void
