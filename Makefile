@@ -3,7 +3,7 @@
 DOCKER_COMPOSE ?= docker compose
 PHP := $(DOCKER_COMPOSE) exec -T php
 
-.PHONY: help up install demo test-db test phpstan cs cs-fix check lint-container schema-validate
+.PHONY: help up install demo test-db test phpstan cs cs-fix check lint-container schema-validate frontend-install frontend-dev frontend-build frontend-test
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make <target>\n\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -42,3 +42,15 @@ schema-validate: ## Validate Doctrine mapping vs DB (test env)
 	$(PHP) bin/console doctrine:schema:validate --env=test
 
 check: test phpstan cs lint-container ## Local quality gate (phpunit + phpstan + cs + container)
+
+frontend-install: ## Install frontend npm deps
+	cd frontend && npm install
+
+frontend-dev: ## Start Vite frontend (proxies /api to :8080)
+	cd frontend && npm run dev
+
+frontend-build: ## Build frontend for production
+	cd frontend && npm run build
+
+frontend-test: ## Run frontend unit tests
+	cd frontend && npm test

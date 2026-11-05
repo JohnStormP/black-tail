@@ -1,0 +1,8 @@
+export const TENANT_ID = '01JC9K2M5N7P8Q3R4S6T7V8W9X'
+export const PLAYER_ID = '01JC9K2M5N7P8Q3R4S6T7V8WBX'
+export const WALLET_ID = '01JC9K2M5N7P8Q3R4S6T7V8WCX'
+export const LUCKY_REELS_GAME_ID = '01JC9K2M5N7P8Q3R4S6T7V8WFX'
+export const CRASH_GAME_ID = '01JC9K2M5N7P8Q3R4S6T7V8WGX'
+export const ADMIN_EMAIL = 'admin@blacktail.demo'
+export const SUPER_EMAIL = 'super@blacktail.demo'
+export const PASSWORD = 'secret-password'

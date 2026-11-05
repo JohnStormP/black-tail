@@ -79,6 +79,7 @@ flowchart TB
 
 Edges are the important runtime dependencies only, not a full import graph.
 **Bonus** has Application/Domain handlers only (no HTTP API). **Mercure** is demo-only for Crash flight UI, not a required production bus.
+The `frontend/` SPA talks to this HTTP API through the Vite proxy (`/api` → `:8080`); it is part of the monorepo and uses live session cookies (no mock API layer).
 
 ## Key flows
 

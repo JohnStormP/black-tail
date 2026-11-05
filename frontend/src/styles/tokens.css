@@ -1,0 +1,99 @@
+:root {
+  /* Surfaces */
+  --bt-bg: #0b0d10;
+  --bt-bg-elevated: #12151a;
+  --bt-bg-muted: #181c23;
+  --bt-bg-hover: #1e2430;
+  --bt-bg-active: #242b38;
+
+  /* Borders */
+  --bt-border: #262b33;
+  --bt-border-strong: #343b48;
+  --bt-border-focus: #2dd4bf;
+
+  /* Text */
+  --bt-text: #e8eaed;
+  --bt-text-muted: #9aa3b2;
+  --bt-text-faint: #6b7280;
+  --bt-text-inverse: #0b0d10;
+
+  /* Brand accent */
+  --bt-accent: #2dd4bf;
+  --bt-accent-hover: #5eead4;
+  --bt-accent-muted: rgba(45, 212, 191, 0.12);
+  --bt-accent-border: rgba(45, 212, 191, 0.35);
+
+  /* Semantic */
+  --bt-success: #34d399;
+  --bt-success-muted: rgba(52, 211, 153, 0.12);
+  --bt-warning: #fbbf24;
+  --bt-warning-muted: rgba(251, 191, 36, 0.12);
+  --bt-danger: #f87171;
+  --bt-danger-muted: rgba(248, 113, 113, 0.12);
+  --bt-info: #60a5fa;
+  --bt-info-muted: rgba(96, 165, 250, 0.12);
+
+  /* Chart */
+  --bt-chart-1: #2dd4bf;
+  --bt-chart-2: #60a5fa;
+  --bt-chart-3: #a78bfa;
+  --bt-chart-4: #fbbf24;
+  --bt-chart-5: #f87171;
+  --bt-chart-grid: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --bt-font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --bt-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --bt-text-display: 2rem;
+  --bt-text-h1: 1.5rem;
+  --bt-text-h2: 1.25rem;
+  --bt-text-h3: 1.0625rem;
+  --bt-text-body: 0.875rem;
+  --bt-text-small: 0.8125rem;
+  --bt-text-caption: 0.75rem;
+  --bt-text-kpi: 1.75rem;
+
+  --bt-leading-tight: 1.2;
+  --bt-leading-body: 1.5;
+
+  /* Spacing (8px base) */
+  --bt-space-1: 0.25rem;
+  --bt-space-2: 0.5rem;
+  --bt-space-3: 0.75rem;
+  --bt-space-4: 1rem;
+  --bt-space-5: 1.25rem;
+  --bt-space-6: 1.5rem;
+  --bt-space-8: 2rem;
+  --bt-space-10: 2.5rem;
+  --bt-space-12: 3rem;
+
+  /* Radius */
+  --bt-radius-sm: 0.375rem;
+  --bt-radius: 0.5rem;
+  --bt-radius-md: 0.625rem;
+  --bt-radius-lg: 0.75rem;
+
+  /* Shadows (minimal) */
+  --bt-shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --bt-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --bt-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+
+  /* Layout */
+  --bt-sidebar-width: 240px;
+  --bt-sidebar-collapsed: 72px;
+  --bt-header-height: 56px;
+  --bt-content-max: 1400px;
+
+  /* Motion */
+  --bt-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --bt-duration: 160ms;
+  --bt-duration-slow: 240ms;
+
+  /* Z-index */
+  --bt-z-dropdown: 40;
+  --bt-z-sticky: 50;
+  --bt-z-drawer: 60;
+  --bt-z-modal: 70;
+  --bt-z-toast: 80;
+}

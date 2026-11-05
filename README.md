@@ -86,7 +86,13 @@ Modular monolith under `src/`. Each module keeps Domain / Application / Infrastr
 3. **Crash cash-out** - Game owns the round and cash-out against the server multiplier; wallet settle runs in that path; Mercure flight push is demo-only.
 4. **AI ask** - rate-limited `/api/ai/ask` builds analytics context, then **ConfigurableLlmClient** (Fake by default; real LLM when `AI_LLM_*` set).
 
-`frontend/` is a local SPA against this API on `:8080`; the directory is listed in `.gitignore` until it is wired in a later step.
+`frontend/` is the React console for this API. With the stack up (`make up && make install && make demo`):
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Open http://localhost:5173 (Vite proxies `/api` to `:8080`). Demo logins match seed above. Details: [frontend/README.md](frontend/README.md).
 
 HTTP API map: [docs/api.md](docs/api.md).
 
@@ -106,6 +112,10 @@ make cs                # PHP CS Fixer dry-run
 make cs-fix            # apply CS fixes
 make check             # test + phpstan + cs + lint:container
 make schema-validate   # Doctrine schema (test env)
+make frontend-install  # npm install in frontend/
+make frontend-dev      # Vite on :5173 (API proxy → :8080)
+make frontend-test
+make frontend-build
 ```
 
 If HTTP returns **502** from `:8080`, check that `php` and `nginx` are up (`docker compose ps`) and that php-fpm listens on `9000` for the Docker network (image default via `docker.conf`: `listen = 9000`). Then `docker compose restart nginx php`.
