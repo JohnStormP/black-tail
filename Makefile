@@ -3,7 +3,7 @@
 DOCKER_COMPOSE ?= docker compose
 PHP := $(DOCKER_COMPOSE) exec -T php
 
-.PHONY: help up demo test phpstan cs cs-fix check lint-container schema-validate
+.PHONY: help up install demo test-db test phpstan cs cs-fix check lint-container schema-validate
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make <target>\n\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -11,10 +11,17 @@ help: ## Show available targets
 up: ## Build and start the Docker stack
 	$(DOCKER_COMPOSE) up -d --build
 
+install: ## Install Composer deps in the php image
+	$(DOCKER_COMPOSE) run --rm --no-deps php composer install --prefer-dist --no-interaction
+
 demo: ## Run migrations, ClickHouse schema and seed demo data (stack must be up)
 	$(PHP) bin/console doctrine:migrations:migrate --no-interaction
 	$(PHP) bin/console analytics:clickhouse:setup
 	$(PHP) bin/console app:demo:seed
+
+test-db: ## Create test database and run migrations
+	$(PHP) bin/console doctrine:database:create --env=test --if-not-exists
+	$(PHP) bin/console doctrine:migrations:migrate --env=test --no-interaction
 
 test: ## Run PHPUnit
 	$(PHP) vendor/bin/phpunit

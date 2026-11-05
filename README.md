@@ -29,6 +29,7 @@ Prerequisites: Docker and Docker Compose.
 ```bash
 cp .env.example .env   # if .env is missing
 make up                # build + start stack
+make install           # Composer deps in the php image
 make demo              # migrations + ClickHouse schema + app:demo:seed
 ```
 
@@ -96,7 +97,9 @@ Stack must be running (`make up`). Quality commands go through the `php` service
 ```bash
 make help              # list targets
 make up                # build + start stack
+make install           # Composer deps (compose run --rm --no-deps php)
 make demo              # migrate + ClickHouse schema + seed
+make test-db           # create test DB + migrate (same as CI)
 make test              # PHPUnit
 make phpstan
 make cs                # PHP CS Fixer dry-run
@@ -104,3 +107,5 @@ make cs-fix            # apply CS fixes
 make check             # test + phpstan + cs + lint:container
 make schema-validate   # Doctrine schema (test env)
 ```
+
+If HTTP returns **502** from `:8080`, check that `php` and `nginx` are up (`docker compose ps`) and that php-fpm listens on `9000` for the Docker network (image default via `docker.conf`: `listen = 9000`). Then `docker compose restart nginx php`.
