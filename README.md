@@ -1,9 +1,12 @@
 # BLACK-TAIL
 
-B2B iGaming platform backend (portfolio / demo).
+B2B iGaming platform (portfolio / demo): Symfony modular monolith + React operator console.
 Simulates the infrastructure behind an online casino:
 players, multi-tenancy, wallets, ledger, deposits/withdrawals, games, betting, bonuses, payments, risk,
 analytics, real-time events, and an AI analytics assistant - without real money or real gambling providers.
+
+This is a learning demo, not a production casino. Games in the UI use a seeded demo player and wallet.
+The React operator console (`frontend/`) was built with an AI coding agent, then reviewed and adjusted by hand.
 
 ## Stack
 
@@ -16,6 +19,7 @@ analytics, real-time events, and an AI analytics assistant - without real money 
 - ClickHouse
 - Mercure
 - Docker (Nginx, PHP-FPM)
+- React + TypeScript + Vite (`frontend/`)
 - PHPUnit
 - PHPStan
 - PHP CS Fixer
@@ -24,19 +28,22 @@ analytics, real-time events, and an AI analytics assistant - without real money 
 
 ## Quickstart (demo)
 
-Prerequisites: Docker and Docker Compose.
+Prerequisites: Docker, Docker Compose, and Node.js 20+ (for the console).
 
 ```bash
 cp .env.example .env   # if .env is missing
 make up                # build + start stack
 make install           # Composer deps in the php image
 make demo              # migrations + ClickHouse schema + app:demo:seed
+make frontend-install  # npm deps
+make frontend-dev      # Vite on :5173, proxies /api → :8080
 ```
 
 | Service | URL / port |
 | --- | --- |
-| HTTP (Nginx → PHP-FPM) | http://127.0.0.1:8080 |
-| Worker (`messenger:consume async`) | Compose service `worker` (no host port) |
+| Operator console (Vite) | http://localhost:5173 |
+| HTTP API (Nginx → PHP-FPM) | http://127.0.0.1:8080 |
+| Worker (`messenger:consume async`) | Compose service `worker` (needed for analytics after spins) |
 | RabbitMQ management | http://127.0.0.1:15672 (`guest` / `guest`) |
 | Mercure hub | http://127.0.0.1:3000/.well-known/mercure |
 | Postgres | `127.0.0.1:5432` |
@@ -50,13 +57,15 @@ Demo login (from `app:demo:seed` / `DemoSeedIds`):
 - tenant id: `01JC9K2M5N7P8Q3R4S6T7V8W9X`
 - seeded games: `lucky_reels`, `crash`
 
+API-only login check:
+
 ```bash
 curl -i -c cookies.txt -X POST http://127.0.0.1:8080/api/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@blacktail.demo","password":"secret-password"}'
 ```
 
-Session cookie is set on success. Use it for authenticated calls; many tenant-scoped endpoints also need `tenantId` in the body or query (see [docs/api.md](docs/api.md)).
+Session cookie is set on success. The console uses the same cookie via the Vite `/api` proxy. Many tenant-scoped endpoints also need `tenantId` in the body or query (see [docs/api.md](docs/api.md)). Frontend details: [frontend/README.md](frontend/README.md).
 
 `.env` is tuned for PHP **inside** Compose (hosts `postgres`, `redis`, `clickhouse`, …). For PHP on the host (`symfony serve`, host PHPUnit), put `127.0.0.1` overrides in `.env.local` and use ClickHouse port **8124**. Do not commit `.env.local`.
 
@@ -85,14 +94,7 @@ Modular monolith under `src/`. Each module keeps Domain / Application / Infrastr
 2. **Payment deposit / withdraw** - payment use-case + idempotency key drives wallet ledger entries; webhooks / fail-stale must not double-apply money. Payments do **not** publish to RabbitMQ.
 3. **Crash cash-out** - Game owns the round and cash-out against the server multiplier; wallet settle runs in that path; Mercure flight push is demo-only.
 4. **AI ask** - rate-limited `/api/ai/ask` builds analytics context, then **ConfigurableLlmClient** (Fake by default; real LLM when `AI_LLM_*` set).
-
-`frontend/` is the React console for this API. With the stack up (`make up && make install && make demo`):
-
-```bash
-cd frontend && npm install && npm run dev
-```
-
-Open http://localhost:5173 (Vite proxies `/api` to `:8080`). Demo logins match seed above. Details: [frontend/README.md](frontend/README.md).
+5. **Operator console** - React SPA talks to the live HTTP API (session cookie); Lucky Reels / Crash play the seeded demo player.
 
 HTTP API map: [docs/api.md](docs/api.md).
 
