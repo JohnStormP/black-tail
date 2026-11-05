@@ -9,6 +9,7 @@ Source of truth: Symfony attribute routes (`bin/console debug:router`). Auth is 
 | public | no login |
 | auth | `IS_AUTHENTICATED_FULLY` |
 | tenant | auth + `TENANT_ACCESS` on the relevant tenant/player |
+| money | `MONEY_ACCESS` (tenant_admin / super_admin only; not support / analyst) + usually `TENANT_ACCESS` |
 | super | `ROLE_SUPER_ADMIN` |
 | ai | `AI_ASK` (analyst / tenant_admin / super_admin) |
 
@@ -48,7 +49,7 @@ Every response includes `X-Request-Id` (echoes a valid incoming header, otherwis
 | GET | `/api/players` | tenant | `?tenantId=` required | |
 | POST | `/api/players` | tenant | `{ playerId, tenantId, email }` | 201 |
 | GET | `/api/players/{playerId}` | tenant | - | |
-| POST | `/api/players/{playerId}/block` | tenant | - | 200 |
+| POST | `/api/players/{playerId}/block` | money | - | 200; **403** for support / analyst |
 
 ## Wallets
 
@@ -93,7 +94,7 @@ Every response includes `X-Request-Id` (echoes a valid incoming header, otherwis
 | POST | `/api/bets` | tenant | `{ betId, playerId, gameId, roundId, amountMinor, currency, idempotencyKey, providerReference? }` | 201 |
 | GET | `/api/bets/{betId}` | tenant | - | |
 | POST | `/api/bets/{betId}/accept` | tenant | `{ walletId, reserveEntryId }` | 200; idempotent if already accepted |
-| POST | `/api/bets/{betId}/settle` | tenant | `{ walletId, settleEntryId, outcome: won\|lost, payoutMinor?, payoutEntryId? }` | 200 |
+| POST | `/api/bets/{betId}/settle` | money | `{ walletId, settleEntryId, outcome: won\|lost, payoutMinor?, payoutEntryId? }` | 200; **403** for support / analyst |
 
 ## Payments
 
@@ -101,8 +102,8 @@ Every response includes `X-Request-Id` (echoes a valid incoming header, otherwis
 |--------|------|------|--------------|-------|
 | GET | `/api/payments` | tenant | `?tenantId=` required; `?type=deposit\|withdrawal` optional | |
 | GET | `/api/payments/{paymentId}` | tenant | - | |
-| POST | `/api/payments/deposits` | tenant | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, provider? }` | 201 |
-| POST | `/api/payments/withdrawals` | tenant | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, reserveEntryId, releaseEntryId, provider? }` | 201 / 200 |
+| POST | `/api/payments/deposits` | money | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, provider? }` | 201; **403** for support / analyst |
+| POST | `/api/payments/withdrawals` | money | `{ paymentId, playerId, walletId, amountMinor, currency, idempotencyKey, reserveEntryId, releaseEntryId, provider? }` | 201 / 200; **403** for support / analyst |
 | POST | `/api/payments/webhooks/{provider}` | public | `{ providerReference, outcome, ledgerEntryId, releaseEntryId?, failureReason? }` | provider callback; header **X-Signature** = HMAC-SHA256(raw body, `PAYMENT_WEBHOOK_SECRET`); **401** if missing/invalid |
 
 ## Risk rules

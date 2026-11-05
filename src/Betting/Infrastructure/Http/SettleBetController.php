@@ -12,6 +12,7 @@ use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
 use App\Betting\Domain\ValueObject\BetSettlementOutcome;
 use App\Betting\Domain\ValueObject\BetStatus;
+use App\Identity\Infrastructure\Security\MoneyAccessVoter;
 use App\Identity\Infrastructure\Security\TenantAccessVoter;
 use App\Player\Domain\Exception\PlayerNotFoundException;
 use App\Player\Domain\Repository\PlayerRepositoryInterface;
@@ -37,7 +38,7 @@ final class SettleBetController
     }
 
     #[Route('/api/bets/{betId}/settle', name: 'api_bets_settle', methods: ['POST'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted(MoneyAccessVoter::MONEY_ACCESS)]
     public function __invoke(string $betId, #[MapRequestPayload] SettleBetRequest $body): Response
     {
         try {

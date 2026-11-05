@@ -2,6 +2,7 @@
 
 namespace App\Payment\Infrastructure\Http;
 
+use App\Identity\Infrastructure\Security\MoneyAccessVoter;
 use App\Identity\Infrastructure\Security\TenantAccessVoter;
 use App\Payment\Application\Command\InitiateDepositCommand;
 use App\Payment\Application\Handler\InitiateDepositHandler;
@@ -31,7 +32,7 @@ final class InitiateDepositController
     }
 
     #[Route('/api/payments/deposits', name: 'api_payments_deposits_create', methods: ['POST'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted(MoneyAccessVoter::MONEY_ACCESS)]
     public function __invoke(#[MapRequestPayload] InitiateDepositRequest $body): Response
     {
         try {

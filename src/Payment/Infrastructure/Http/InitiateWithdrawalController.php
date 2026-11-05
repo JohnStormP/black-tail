@@ -2,6 +2,7 @@
 
 namespace App\Payment\Infrastructure\Http;
 
+use App\Identity\Infrastructure\Security\MoneyAccessVoter;
 use App\Identity\Infrastructure\Security\TenantAccessVoter;
 use App\Payment\Application\Command\InitiateWithdrawalCommand;
 use App\Payment\Application\Handler\InitiateWithdrawalHandler;
@@ -38,7 +39,7 @@ final class InitiateWithdrawalController
     }
 
     #[Route('/api/payments/withdrawals', name: 'api_payments_withdrawals_create', methods: ['POST'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted(MoneyAccessVoter::MONEY_ACCESS)]
     public function __invoke(#[MapRequestPayload] InitiateWithdrawalRequest $body): Response
     {
         try {

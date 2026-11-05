@@ -2,6 +2,7 @@
 
 namespace App\Player\Infrastructure\Http;
 
+use App\Identity\Infrastructure\Security\MoneyAccessVoter;
 use App\Identity\Infrastructure\Security\TenantAccessVoter;
 use App\Player\Application\Command\BlockPlayerCommand;
 use App\Player\Application\Handler\BlockPlayerHandler;
@@ -26,7 +27,7 @@ final class BlockPlayerController
     }
 
     #[Route('/api/players/{playerId}/block', name: 'api_players_block', methods: ['POST'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted(MoneyAccessVoter::MONEY_ACCESS)]
     public function __invoke(string $playerId): Response
     {
         try {
