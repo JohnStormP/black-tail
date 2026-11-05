@@ -7,6 +7,7 @@ use App\Betting\Domain\Exception\BetNotFoundException;
 use App\Betting\Domain\Repository\BetRepositoryInterface;
 use App\Betting\Domain\ValueObject\BetId;
 use App\Betting\Domain\ValueObject\BetIdempotencyKey;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\ORM\OptimisticLockException;
@@ -42,6 +43,24 @@ final class DoctrineBetRepository implements BetRepositoryInterface
     public function getById(BetId $id): Bet
     {
         $bet = $this->findById($id);
+
+        if (null === $bet) {
+            throw BetNotFoundException::withId($id);
+        }
+
+        return $bet;
+    }
+
+    public function getByIdForUpdate(BetId $id): Bet
+    {
+        $bet = $this->entityManager->createQueryBuilder()
+            ->select('b')
+            ->from(Bet::class, 'b')
+            ->where('b.id = :id')
+            ->setParameter('id', $id->toString())
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getOneOrNullResult();
 
         if (null === $bet) {
             throw BetNotFoundException::withId($id);

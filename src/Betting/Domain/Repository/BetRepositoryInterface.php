@@ -18,5 +18,10 @@ interface BetRepositoryInterface
      */
     public function getById(BetId $id): Bet;
 
+    /**
+     * @throws BetNotFoundException
+     */
+    public function getByIdForUpdate(BetId $id): Bet;
+
     public function findByIdempotencyKey(BetIdempotencyKey $key): ?Bet;
 }

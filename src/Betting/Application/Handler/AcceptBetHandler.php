@@ -40,7 +40,7 @@ final class AcceptBetHandler
             $entryId = LedgerEntryId::fromString($command->reserveEntryId);
 
             $wallet = $this->wallets->getByIdForUpdate($walletId);
-            $bet = $this->bets->getById($betId);
+            $bet = $this->bets->getByIdForUpdate($betId);
 
             if (BetStatus::Accepted === $bet->status()) {
                 return;
